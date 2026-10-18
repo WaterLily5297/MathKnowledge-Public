@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="An independent mathematics reading catalog. Find textbooks, lectures, papers, and corrections, with links to the original sources.">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Formosa — Mathematics at the source</title>
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<header class="masthead"><a class="brand" href="#catalog"><span class="mark" aria-hidden="true">F.</span> Formosa<span class="brand-detail">MATHEMATICS LIBRARY</span></a><nav aria-label="Main navigation"><a href="#catalog">Catalog</a><a href="#about">About</a><span class="edition">PUBLIC READING EDITION</span></nav></header>
+<main>
+<section class="intro"><div><p class="eyebrow">A GUIDE TO ORIGINAL SOURCES</p><h1>Mathematics,<br>at the source.</h1><p class="lead">Textbooks, lecture notes, research papers, and corrections. Follow an idea back to the people who wrote it.</p></div><aside class="intro-note"><span class="note-number">01 / THE COLLECTION</span><p>Browse the catalog.<br>Read at the original source.<br>Check the edition.</p><span class="small">Independent, read-only, and open to explore.</span></aside></section>
+<div class="collection-bar"><span><strong id="total">—</strong> sources in the catalog</span><span id="updated">Loading collection…</span></div>
+<section id="catalog" aria-labelledby="catalog-title"><div class="section-title"><h2 id="catalog-title">Explore the collection</h2><span class="small">Bibliography &amp; original source links</span></div>
+<form id="filters" role="search"><label class="search-label" for="query">Search the catalog</label><div class="search-row"><span aria-hidden="true">⌕</span><input id="query" type="search" placeholder="Try algebraic geometry, topology, or an author…" autocomplete="off"><button type="button" id="clear">Reset filters</button></div><div class="filter-row"><label>Subject<select id="subject"><option value="">All subjects</option></select></label><label>Material<select id="type"><option value="">All materials</option></select></label><label>Language<select id="language"><option value="">All languages</option></select></label></div></form>
+<div class="result-heading"><p id="result-count" role="status" aria-live="polite">Loading sources…</p><span class="small">TITLE / AUTHOR / SOURCE</span></div>
+<div id="results" class="results" aria-busy="true"></div>
+<div class="pagination"><button id="previous" type="button" disabled>← Previous</button><span id="page-label"></span><button id="next" type="button" disabled>Next →</button></div>
+<noscript><p>Enable JavaScript to filter the catalog, or <a href="catalog.json">read its public metadata</a>.</p></noscript>
+</section>
+<section id="about" class="about"><p class="eyebrow">READ WITH CONTEXT</p><h2>A starting point,<br>not the final word.</h2><div><p>This catalog points to original authors, universities, publishers, and repositories. Follow the source link to check availability, editions, corrections, and access terms. Public access to a source does not itself grant redistribution rights.</p><p>Titles retain their original language. Search matches bibliographic metadata; this public edition does not search book pages or provide local downloads.</p><p class="small">This is an independent reading catalog. Listed authors and institutions do not endorse it. Personal notes, OneNote pages, and local application services are not part of this website.</p></div></section>
+</main>
+<footer><a class="footer-brand" href="#catalog">F. Formosa</a><span>Read carefully. Cite the source.</span><a href="catalog.json">Public metadata ↗</a></footer>
+</body>
+</html>
