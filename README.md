@@ -2,7 +2,7 @@
 
 Read-only bibliographic metadata and original source links. No local files, personal notes, OneNote content, credentials, or backend endpoints are included.
 
-The public interface uses English. Bibliographic titles and author credits are shown as published in the catalog.
+The interface is available in English and Japanese. Japanese browsers get Japanese automatically; add `lang=ja` or `lang=en` to a link to choose (`#catalog?lang=ja`, or `?lang=ja` on GitHub Pages). Bibliographic titles and author credits are shown as published in the catalog.
 
 The address follows the catalog search and filters, so a result list can be shared as a link (`#catalog?q=...&subject=...&type=...&language=...`). The theory map (`#map`) shows how the subjects build on each other, with the catalog books for each; link to one theory with `#map?theory=...`. Study marks are kept in the visitor's browser.
 

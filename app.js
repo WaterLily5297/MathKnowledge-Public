@@ -4,13 +4,13 @@ const i18n = window.FormosaI18n;
 const t = (key, english, vars) => i18n.t(key, english, vars);
 const types = {book:'Books and lecture notes','journal-article':'Papers','journal-issue':'Journal issues',errata:'Errata and editions',encyclopedia:'Encyclopedias and reference collections',software:'Software',project:'Projects',dataset:'Datasets',reference:'Reference material'};
 const languages = {en:'English',zh:'Chinese',ja:'Japanese',fr:'French',de:'German',it:'Italian',es:'Spanish',pt:'Portuguese',ru:'Russian',und:'Unspecified',mul:'Multiple languages',la:'Latin'};
-const pageTitles = {home:'Home',catalog:'Catalog',about:'About'};
+const pageTitles = {home:'Home',catalog:'Catalog',search:'Full-text search',shelf:'Bookshelf',paths:'Reading paths',map:'Theory map',about:'About'};
 const size = 20;
 let data, localReader, features, theoryMap, page = 1;
 // Shareable state lives after the view in the hash (#catalog?q=..., #map?theory=...), so links
 // work on GitHub Pages and on the live gateway, which refuses query strings on its pages.
 const linkFields = {q:'query', subject:'subject', type:'type', language:'language'};
-const views = ['home', 'catalog', 'search', 'shelf', 'paths', 'map', 'about'];
+const views = Object.keys(pageTitles);
 const hashView = () => location.hash.slice(1).split('?')[0];
 const hashParams = () => new URLSearchParams(location.hash.slice(1).split('?').slice(1).join('?'));
 // Read before route() runs. Older links put the parameters in the query string (?id=...#catalog).
@@ -67,7 +67,7 @@ function route() {
   if (link.dataset.nav === view) link.setAttribute('aria-current', 'page');
   else link.removeAttribute('aria-current');
  });
- document.title = ({home:'Home',catalog:'Catalog',search:'Full-text search',shelf:'Bookshelf',paths:'Reading paths',map:'Theory map',about:'About'})[view] + ' - Formosa Mathematics Reading Room';
+ document.title = t('page.' + view, pageTitles[view]) + t('page.suffix', ' - Formosa Mathematics Reading Room');
  if(view==='shelf'&&features)features.renderShelf();
  if (view === 'catalog' && data) writeLink();
  if (view === 'map' && theoryMap && theoryMap.current) writeTheory(theoryMap.current);
@@ -135,7 +135,8 @@ function render() {
  const query = $('query').value.trim().toLocaleLowerCase();
  const subject = $('subject').value, kind = $('type').value, language = $('language').value;
  const rows = data.items.filter(row => {
-  const terms = [row.title, row.authors, row.year, ...row.subjects.map(id => data.labels.get(id))];
+  // Subjects also match their Japanese names, whichever language is shown.
+  const terms = [row.title, row.authors, row.year, ...row.subjects.flatMap(id => [data.labels.get(id), i18n.subjectJa(id)])];
   return (!subject || row.subjects.includes(subject)) && (!kind || row.type === kind)
    && (!$('available-only').checked || (data.shared_pdfs && data.shared_pdfs[row.id]))
    && (!language || row.language === language)
@@ -160,8 +161,8 @@ function render() {
   subject.append(list, element('span', typeLabel(row.type) || t('catalog.resource', 'Resource'), 'resource-meta type-tag'));
   edition.append(element('span', row.year || '—', 'year'), element('span', languageLabel(row.language), 'resource-meta'));
   source.append(sourceLink(row, t('catalog.source', 'Original source ↗'), 'source-link'));
-  if (data.shared_pdfs && data.shared_pdfs[row.id]) title.append(element('span', 'Read PDF - '+data.shared_pdfs[row.id].license, 'resource-meta'));
-  const details=element('button','Details / save','text-button');details.type='button';details.addEventListener('click',()=>features.details(row.id));title.append(details);
+  if (data.shared_pdfs && data.shared_pdfs[row.id]) title.append(element('span', t('catalog.readPdf', 'Read PDF - {license}', {license:data.shared_pdfs[row.id].license}), 'resource-meta'));
+  const details=element('button',t('catalog.details','Details / save'),'text-button');details.type='button';details.addEventListener('click',()=>features.details(row.id));title.append(details);
   tr.append(title, subject, edition, source); $('results').append(tr);
  }
  if (!rows.length) {
@@ -224,6 +225,9 @@ function initTheme() {
   apply(value); try { localStorage.setItem('formosa-theme', value); } catch (_) {}
  });
 }
+function renderShared() {
+ if (data && data.shared_pdfs) $('shared-status').textContent = t('shared.status', '{n} PDFs available for public reading and full-text search.', {n:i18n.number(Object.keys(data.shared_pdfs).length)});
+}
 function initLanguage() {
  i18n.apply();
  document.querySelectorAll('[data-lang-choice]').forEach(button => {
@@ -232,7 +236,8 @@ function initLanguage() {
  i18n.onChange(() => {
   route();
   if (!data) return;
-  renderMeta(); renderSubjects(); render();
+  renderMeta(); renderSubjects(); render(); renderShared();
+  if (features) features.renderShelf();
  });
 }
 async function start() {
@@ -244,7 +249,7 @@ async function start() {
   data.labels = new Map(data.subjects.map(subject => [subject.id, subject.label]));
   localReader = window.FormosaReader.init(data.items, () => { render(); if (theoryMap) theoryMap.refresh(); });
   features=window.FormosaFeatures.init(data,{element,titleLink,localReader});
-  if(data.shared_pdfs){$('local-library').hidden=true;$('shared-banner').hidden=false;$('shared-status').textContent=Object.keys(data.shared_pdfs).length+' PDFs available for public reading and full-text search.';$('available-control').hidden=false;$('available-only').checked=true;$('live-library').hidden=true;}
+  if(data.shared_pdfs){$('local-library').hidden=true;$('shared-banner').hidden=false;renderShared();$('available-control').hidden=false;$('available-only').checked=true;$('live-library').hidden=true;}
   else if($('live-library').dataset.expires && Date.parse($('live-library').dataset.expires)<Date.now())$('live-library').hidden=true;
   renderMeta();
   $('filters').addEventListener('submit', event => event.preventDefault());
