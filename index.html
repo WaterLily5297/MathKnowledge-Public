@@ -22,6 +22,7 @@
 <script src="i18n.js" defer></script>
 <script src="reader.js" defer></script>
 <script src="features.js" defer></script>
+<script src="knowledge.js" defer></script>
 <script src="app.js" defer></script>
 </head>
 <body>
@@ -29,7 +30,7 @@
 <header class="masthead">
  <div class="masthead-row"><a class="masthead-title" href="#home">Formosa</a><span class="masthead-sub" data-i18n="masthead.sub">Mathematics Reading Room</span><p class="masthead-issue"><span data-i18n="issue.prefix">Public catalog:</span> <span id="total">&mdash;</span> <span data-i18n="issue.unit">resources</span> - <span id="updated">Updating catalog...</span></p></div>
  <div class="masthead-rule"></div>
- <div class="masthead-nav"><nav aria-label="Main navigation" data-i18n-attr="aria-label:nav.label"><a href="#home" data-nav="home" data-i18n="nav.home">Home</a><a href="#catalog" data-nav="catalog" data-kind="" data-i18n="nav.catalog">Catalog</a><a href="#catalog" data-kind="book" data-i18n="nav.books">Books and lecture notes</a><a href="#catalog" data-kind="journal-article" data-i18n="nav.papers">Papers</a><a href="#catalog" data-kind="errata" data-i18n="nav.errata">Errata</a><a href="#about" data-nav="about" data-i18n="nav.about">About</a><a href="#search" data-nav="search" id="search-nav" hidden>Full-text search</a><a href="#shelf" data-nav="shelf">Bookshelf</a><a href="#paths" data-nav="paths" id="paths-nav" hidden>Reading paths</a><a id="live-library" href="https://c0f81babd75d96.lhr.life/#catalog" data-expires="2026-10-19T22:30:35.809361+00:00" target="_blank" rel="noopener noreferrer">Read PDFs ↗</a></nav>
+ <div class="masthead-nav"><nav aria-label="Main navigation" data-i18n-attr="aria-label:nav.label"><a href="#home" data-nav="home" data-i18n="nav.home">Home</a><a href="#catalog" data-nav="catalog" data-kind="" data-i18n="nav.catalog">Catalog</a><a href="#catalog" data-kind="book" data-i18n="nav.books">Books and lecture notes</a><a href="#catalog" data-kind="journal-article" data-i18n="nav.papers">Papers</a><a href="#catalog" data-kind="errata" data-i18n="nav.errata">Errata</a><a href="#about" data-nav="about" data-i18n="nav.about">About</a><a href="#search" data-nav="search" id="search-nav" hidden>Full-text search</a><a href="#shelf" data-nav="shelf">Bookshelf</a><a href="#paths" data-nav="paths" id="paths-nav" hidden>Reading paths</a><a href="#knowledge" data-nav="knowledge" id="knowledge-nav" hidden>Knowledge desk</a><a id="live-library" href="https://c0f81babd75d96.lhr.life/#catalog" data-expires="2026-10-19T22:30:35.809361+00:00" target="_blank" rel="noopener noreferrer">Read PDFs ↗</a></nav>
  <div class="masthead-controls">
   <label class="theme-control"><span class="sr-only" data-i18n="theme.label">Reading theme</span><select id="theme" aria-label="Reading theme" data-i18n-attr="aria-label:theme.label"><option value="system" data-i18n="theme.system">System theme</option><option value="light" data-i18n="theme.light">Light</option><option value="dark" data-i18n="theme.dark">Dark</option><option value="night" data-i18n="theme.night">Warm night</option></select></label>
  </div></div>
@@ -65,12 +66,48 @@
  <section id="search" data-view="search" aria-labelledby="search-title" hidden><h1 id="search-title">Search inside books</h1><p>Search the text of PDFs currently shared by the owner. Page numbers refer to the PDF viewer position.</p><form id="fulltext-form"><label>Search terms<input id="fulltext-query" type="search" maxlength="200" required></label><label>Book<select id="fulltext-book"><option value="">All shared PDFs</option></select></label><button class="primary" type="submit">Search text</button></form><p id="fulltext-status" role="status" aria-live="polite"></p><div id="fulltext-results"></div></section>
  <section id="shelf" data-view="shelf" aria-labelledby="shelf-title" hidden><h1 id="shelf-title">My bookshelf</h1><p>Saved books and reading progress stay in this browser.</p><div id="shelf-items"></div></section>
  <section id="paths" data-view="paths" aria-labelledby="paths-title" hidden><h1 id="paths-title">Reading paths</h1><p>A suggested order from the local library. Adapt it to your background.</p><div id="reading-paths"></div></section>
+ <section id="knowledge" data-view="knowledge" aria-labelledby="knowledge-title" hidden>
+  <div class="section-heading"><h1 id="knowledge-title" tabindex="-1">Knowledge desk</h1><span class="subtle">Concepts, prerequisites and the books behind them</span></div>
+  <p class="knowledge-intro">Move from a definition to the ideas it rests on, then open a shared PDF to read it in the original.</p>
+  <div id="knowledge-static" class="knowledge-static" hidden><p>The knowledge desk is available only on the live library, which serves its reference notes and shared PDFs. It is not available on this copy of the catalog. The catalog and its original source links still work here.</p></div>
+  <div id="knowledge-desk">
+   <section class="knowledge-provenance" aria-label="About these notes">
+    <p><strong>Notes written by Formosa.</strong> Summaries and formulas on this desk are written for this library. They are not imported articles, and no outside source has reviewed them.</p>
+    <p><span class="knowledge-provider-label"><span id="knowledge-provider-name">Banana Space</span>: external search links</span> <span id="knowledge-provider-mode" class="subtle">Live API: not verified · Article import: off</span> <a id="knowledge-provider" target="_blank" rel="noopener noreferrer" hidden>Visit the site ↗</a></p>
+   </section>
+   <form id="knowledge-form" class="knowledge-form" role="search">
+    <div class="search-row"><label class="sr-only" for="knowledge-query">Find a concept</label><input id="knowledge-query" type="search" maxlength="120" autocomplete="off" placeholder="Find a concept, e.g. Banach"><button class="primary" type="submit">Search</button></div>
+    <div class="filter-row"><label><span>Subject</span><select id="knowledge-subject"><option value="">All subjects</option></select></label><button type="button" id="knowledge-reset" class="text-button">Reset</button><p id="knowledge-count" class="result-heading" role="status" aria-live="polite">Loading concepts...</p></div>
+   </form>
+   <div id="knowledge-error" class="knowledge-error" role="alert" hidden><p id="knowledge-error-text"></p><button type="button" id="knowledge-retry" class="secondary">Try again</button></div>
+   <div class="knowledge-grid">
+    <section class="knowledge-index" aria-labelledby="knowledge-index-title">
+     <h2 id="knowledge-index-title" class="knowledge-label">Concept index</h2>
+     <div id="knowledge-list" class="concept-list" aria-busy="true"></div>
+     <div id="knowledge-empty" class="knowledge-empty" hidden><p id="knowledge-empty-text"></p><button type="button" id="knowledge-empty-reset" class="text-button">Show all concepts</button></div>
+    </section>
+    <article id="knowledge-detail" class="knowledge-panel" aria-labelledby="knowledge-detail-title" aria-busy="false">
+     <div class="knowledge-topline"><span id="knowledge-detail-subject">Reference note</span><span>Formosa summary</span></div>
+     <p id="knowledge-trail" class="knowledge-trail" hidden></p>
+     <h2 id="knowledge-detail-title" tabindex="-1">Choose a concept</h2>
+     <div id="knowledge-summary" class="rich-text knowledge-summary"></div>
+     <div id="knowledge-formula" class="rich-text knowledge-formula" hidden></div>
+     <div id="knowledge-detail-sections" hidden>
+      <h3 class="knowledge-label">Read these first</h3><ul id="knowledge-prerequisites" class="knowledge-prerequisites"></ul>
+      <h3 class="knowledge-label">Shared PDFs on this concept</h3><ul id="knowledge-books" class="knowledge-books"></ul>
+      <div class="knowledge-footnote"><p>This summary was written by Formosa. The source link opens a Banana Space search for the term; it is not a checked citation of a particular article.</p><a id="knowledge-source" target="_blank" rel="noopener noreferrer" hidden>Search Banana Space ↗</a></div>
+     </div>
+    </article>
+   </div>
+  </div>
+ </section>
  <section id="about" data-view="about" aria-labelledby="about-title" hidden>
   <h1 id="about-title" data-i18n="about.title">About the public edition</h1><p class="lead" data-i18n="about.lead">A reading gateway to mathematics resources.</p>
   <h2 data-i18n="about.sync.title">Catalog and synchronization</h2><p data-i18n="about.sync.text">The public catalog is built from local bibliographic records using the same classification rules. Each publication updates the existing pages and catalog in place. The date in the masthead identifies the latest catalog update.</p>
   <h2 data-i18n="about.scope.title">Public scope</h2><p data-i18n="about.scope.text">Public entries contain titles, authors, subjects, resource types, years, languages and original sources. Personal notes, OneNote pages, local paths and local application services are excluded.</p>
   <h2 data-i18n="about.local.title">Read local PDFs</h2><p data-i18n="about.local.text">Connect your MathKnowledge folder to open matching PDFs directly on this computer. Your browser asks for read permission. If books are stored on another drive, connect their containing storage folder too. Folder access lasts for this page and can be disconnected. No PDFs or local catalog data are uploaded. Other visitors cannot read files on your computer; they can follow the public source links.</p>
   <h2 data-i18n="about.math.title">Mathematics in titles</h2><p data-i18n-html="about.math.html">Title formulas are rendered locally with KaTeX and native MathML. The original searchable title is preserved. KaTeX is distributed under its <a href="katex-LICENSE.txt">MIT license</a>.</p>
+  <h2>Knowledge desk</h2><p>On the live library, the knowledge desk lists mathematical concepts with a short note, a formula, the concepts to read first and the shared PDFs on each one. The notes are written by Formosa. Banana Space links open a search on that site; its articles are not imported and its live API is not connected.</p>
   <h2>Live public library</h2><p>The live library supports direct PDF reading, full-text search, indexed page excerpts, book details, reading paths and a browser-local bookshelf. Only owner-selected PDFs are served or searched. Sharing settings are managed from a separate control page on the owner's computer. The computer and tunnel must remain online; free tunnel addresses can change.</p>
   <h2 data-i18n="about.sources.title">Sources and use</h2><p data-i18n="about.sources.text">Source links lead to authors, universities, publishers or public repositories. Check editions, errata and usage terms; public access does not grant redistribution rights. This independently curated catalog is not endorsed by the listed authors or institutions.</p>
   <p><a href="catalog.json" data-i18n="about.data">View public catalog data (JSON)</a></p>
