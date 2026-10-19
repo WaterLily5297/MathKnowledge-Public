@@ -1,7 +1,10 @@
 'use strict';
 const $ = id => document.getElementById(id);
+const i18n = window.FormosaI18n;
+const t = (key, english, vars) => i18n.t(key, english, vars);
 const types = {book:'Books and lecture notes','journal-article':'Papers','journal-issue':'Journal issues',errata:'Errata and editions',encyclopedia:'Encyclopedias and reference collections',software:'Software',project:'Projects',dataset:'Datasets',reference:'Reference material'};
 const languages = {en:'English',zh:'Chinese',ja:'Japanese',fr:'French',de:'German',it:'Italian',es:'Spanish',pt:'Portuguese',ru:'Russian',und:'Unspecified',mul:'Multiple languages',la:'Latin'};
+const pageTitles = {home:'Home',catalog:'Catalog',about:'About'};
 const size = 20;
 let data, localReader, page = 1;
 const element = (tag, content, className) => {
@@ -10,8 +13,17 @@ const element = (tag, content, className) => {
  if (className) node.className = className;
  return node;
 };
+const subjectLabel = id => i18n.subject(id, data.labels.get(id) || id);
+const typeLabel = kind => i18n.type(kind, types[kind] || kind);
+const languageLabel = code => i18n.language(code, languages[code] || code);
 function option(select, value, label) {
  const node = element('option', label); node.value = value; select.append(node);
+}
+function fillOptions(select, values, label) {
+ const current = select.value;
+ select.replaceChildren(select.options[0]);
+ for (const value of values) option(select, value, label(value));
+ select.value = current;
 }
 function sourceLink(row, title, className) {
  const link = element('a', title, className);
@@ -22,7 +34,7 @@ function titleLink(row) {
  const local = localReader && localReader.has(row.id);
  const title = local ? element('button', undefined, 'title-link') : sourceLink(row, '', 'title-link');
  if (local) {
-  title.type = 'button'; title.title = 'Open local PDF';
+  title.type = 'button'; title.title = t('catalog.openLocal', 'Open local PDF');
   title.addEventListener('click', () => localReader.open(row.id));
  }
  window.FormosaReader.renderTitle(title, row.title);
@@ -36,51 +48,84 @@ function route() {
   if (link.dataset.nav === view) link.setAttribute('aria-current', 'page');
   else link.removeAttribute('aria-current');
  });
- document.title = ({home:'Home',catalog:'Catalog',about:'About'})[view] + ' - Formosa Mathematics Reading Room';
+ document.title = t('page.' + view, pageTitles[view]) + t('page.suffix', ' - Formosa Mathematics Reading Room');
 }
 function showCatalog() {
  if (location.hash === '#catalog') route(); else location.hash = 'catalog';
 }
 function render() {
- const query = $('query').value.trim().toLocaleLowerCase('en');
+ const query = $('query').value.trim().toLocaleLowerCase();
  const subject = $('subject').value, kind = $('type').value, language = $('language').value;
  const rows = data.items.filter(row => {
-  const terms = [row.title, row.authors, row.year, ...row.subjects.map(id => data.labels.get(id))];
-  return (!subject || row.subjects.includes(subject)) && (!kind || row.type === kind)
-   && (!language || row.language === language)
-   && (!query || terms.filter(Boolean).join(' ').toLocaleLowerCase('en').includes(query));
+  if ((subject && !row.subjects.includes(subject)) || (kind && row.type !== kind) || (language && row.language !== language)) return false;
+  if (!query) return true;
+  // Subject names match in English and Japanese, whichever language the page shows.
+  const terms = [row.title, row.authors, row.year, ...row.subjects.flatMap(id => [data.labels.get(id), i18n.subjectJa(id)])];
+  return terms.filter(Boolean).join(' ').toLocaleLowerCase().includes(query);
  });
  const pages = Math.max(1, Math.ceil(rows.length / size));
  page = Math.max(1, Math.min(page, pages));
- $('result-count').textContent = rows.length.toLocaleString('en-US') + (rows.length === 1 ? ' matching resource' : ' matching resources');
+ const count = i18n.number(rows.length);
+ $('result-count').textContent = t('catalog.count', rows.length === 1 ? '{n} matching resource' : '{n} matching resources', {n:count});
  $('results').replaceChildren();
  for (const row of rows.slice((page - 1) * size, page * size)) {
   const tr = element('tr'), title = element('td'), subject = element('td'), edition = element('td'), source = element('td');
   title.append(titleLink(row), element('span', row.authors, 'author'));
-  if (localReader && localReader.has(row.id)) title.append(element('span', 'Local PDF linked', 'resource-meta'));
-  subject.append(element('span', row.subjects.map(id => data.labels.get(id) || id).join(' / ') || 'Unclassified', 'subject-list'), element('span', types[row.type] || 'Resource', 'resource-meta'));
-  edition.append(element('span', row.year || '—'), element('span', languages[row.language] || row.language, 'resource-meta'));
-  source.append(sourceLink(row, 'Original source ↗', 'source-link'));
+  if (localReader && localReader.has(row.id)) title.append(element('span', t('catalog.localPdf', 'Local PDF linked'), 'resource-meta local-tag'));
+  const list = element('span', undefined, 'subject-list');
+  if (row.subjects.length) {
+   row.subjects.forEach((id, index) => {
+    if (index) list.append(element('span', ' / ', 'subject-sep'));
+    list.append(element('span', subjectLabel(id)));
+   });
+  } else list.textContent = t('catalog.unclassified', 'Unclassified');
+  subject.append(list, element('span', typeLabel(row.type) || t('catalog.resource', 'Resource'), 'resource-meta type-tag'));
+  edition.append(element('span', row.year || '—', 'year'), element('span', languageLabel(row.language), 'resource-meta'));
+  source.append(sourceLink(row, t('catalog.source', 'Original source ↗'), 'source-link'));
   tr.append(title, subject, edition, source); $('results').append(tr);
  }
  if (!rows.length) {
-  const tr = element('tr'), cell = element('td', 'No matching resources. Try another query or reset the filters.', 'empty');
+  const tr = element('tr'), cell = element('td', t('catalog.empty', 'No matching resources. Try another query or reset the filters.'), 'empty');
+  // Titles are published in English, so a query in another script rarely matches a title.
+  if (/[^\x00-\x7f]/.test(query)) cell.append(element('span', t('catalog.empty.english', 'Titles are listed in English; try English keywords too.'), 'empty-hint'));
   cell.colSpan = 4; tr.append(cell); $('results').append(tr);
  }
  $('results').setAttribute('aria-busy', 'false');
- $('page-label').textContent = 'Page ' + page + ' of ' + pages;
+ $('page-label').textContent = t('catalog.page', 'Page {page} of {pages}', {page:i18n.number(page), pages:i18n.number(pages)});
  $('previous').disabled = page === 1; $('next').disabled = page === pages;
 }
 function renderSubjects() {
  $('subject-rows').replaceChildren();
  const subjects = data.subjects.map(subject => ({...subject, count:data.items.filter(row => row.subjects.includes(subject.id)).length})).sort((a,b) => b.count - a.count);
+ const largest = Math.max(1, ...subjects.map(subject => subject.count));
  for (const subject of subjects) {
-  const tr = element('tr'), name = element('th'), count = element('td', subject.count.toLocaleString('en-US'));
+  const tr = element('tr'), name = element('th'), count = element('td', i18n.number(subject.count));
   name.scope = 'row';
-  const button = element('button', data.labels.get(subject.id));
+  const button = element('button', subjectLabel(subject.id));
   button.type = 'button'; button.dataset.subject = subject.id;
-  name.append(button); tr.append(name, count); $('subject-rows').append(tr);
+  button.addEventListener('click', () => filterBy({subject:subject.id}));
+  // A thin rule under each subject shows its share of the largest subject.
+  const share = element('span', undefined, 'share');
+  share.setAttribute('aria-hidden', 'true');
+  share.style.setProperty('--share', (subject.count / largest).toFixed(4));
+  name.append(button, share); tr.append(name, count); $('subject-rows').append(tr);
  }
+}
+function renderMeta() {
+ $('total').textContent = i18n.number(data.items.length);
+ $('updated').textContent = t('catalog.updated', 'Catalog updated {date}', {date:data.updated});
+ const japanese = data.items.filter(row => row.language === 'ja').length;
+ $('featured-japanese').hidden = !japanese;
+ $('japanese-count').textContent = japanese ? '(' + t('featured.ja.count', '{n} resources', {n:i18n.number(japanese)}) + ')' : '';
+ fillOptions($('subject'), data.subjects.map(subject => subject.id), subjectLabel);
+ fillOptions($('type'), [...new Set(data.items.map(row => row.type))].sort(), typeLabel);
+ fillOptions($('language'), [...new Set(data.items.map(row => row.language))].sort(), languageLabel);
+}
+function filterBy({subject = '', kind = '', language = ''}) {
+ $('filters').reset();
+ if (subject && !data.labels.has(subject)) return;
+ $('subject').value = subject; $('type').value = kind; $('language').value = language;
+ page = 1; render(); showCatalog();
 }
 function initTheme() {
  const allowed = ['system','light','dark','night'];
@@ -97,6 +142,17 @@ function initTheme() {
   apply(value); try { localStorage.setItem('formosa-theme', value); } catch (_) {}
  });
 }
+function initLanguage() {
+ i18n.apply();
+ document.querySelectorAll('[data-lang-choice]').forEach(button => {
+  button.addEventListener('click', () => i18n.set(button.dataset.langChoice));
+ });
+ i18n.onChange(() => {
+  route();
+  if (!data) return;
+  renderMeta(); renderSubjects(); render();
+ });
+}
 async function start() {
  try {
   const response = await fetch('catalog.json', {cache:'no-cache'});
@@ -105,11 +161,7 @@ async function start() {
   if (data.schema !== 1 || !Array.isArray(data.items) || !Array.isArray(data.subjects)) throw Error('Invalid catalog format');
   data.labels = new Map(data.subjects.map(subject => [subject.id, subject.label]));
   localReader = window.FormosaReader.init(data.items, render);
-  $('total').textContent = data.items.length.toLocaleString('en-US');
-  $('updated').textContent = 'Catalog updated ' + data.updated;
-  for (const subject of data.subjects) option($('subject'), subject.id, data.labels.get(subject.id));
-  for (const kind of [...new Set(data.items.map(row => row.type))].sort()) option($('type'), kind, types[kind] || kind);
-  for (const language of [...new Set(data.items.map(row => row.language))].sort()) option($('language'), language, languages[language] || language);
+  renderMeta();
   $('filters').addEventListener('submit', event => event.preventDefault());
   for (const id of ['query','subject','type','language']) $(id).addEventListener(id === 'query' ? 'input' : 'change', () => { page = 1; render(); });
   $('home-search').addEventListener('submit', event => {
@@ -119,24 +171,26 @@ async function start() {
   $('previous').addEventListener('click', () => { page--; render(); $('catalog-title').scrollIntoView(); });
   $('next').addEventListener('click', () => { page++; render(); $('catalog-title').scrollIntoView(); });
   renderSubjects();
-  document.querySelectorAll('[data-subject]').forEach(button => {
-   button.addEventListener('click', () => {
-    if (!data.labels.has(button.dataset.subject)) return;
-    $('filters').reset(); $('subject').value = button.dataset.subject; page = 1; render(); showCatalog();
-   });
+  document.querySelectorAll('.j-features [data-subject]').forEach(button => {
+   button.addEventListener('click', () => filterBy({subject:button.dataset.subject}));
+  });
+  document.querySelectorAll('[data-language]').forEach(button => {
+   button.addEventListener('click', () => filterBy({language:button.dataset.language}));
   });
   document.querySelectorAll('[data-kind]').forEach(link => {
-   link.addEventListener('click', () => { $('filters').reset(); $('type').value = link.dataset.kind; page = 1; render(); showCatalog(); });
+   link.addEventListener('click', () => filterBy({kind:link.dataset.kind}));
   });
   render();
  } catch (_) {
-  const message = 'Catalog could not be loaded. Refresh the page to try again.';
-  $('updated').textContent = 'Catalog temporarily unavailable'; $('result-count').textContent = message;
+  const message = t('catalog.failed', 'Catalog could not be loaded. Refresh the page to try again.');
+  $('updated').textContent = t('catalog.unavailable', 'Catalog temporarily unavailable'); $('result-count').textContent = message;
   $('subject-rows').replaceChildren();
   const tr = element('tr'), cell = element('td', message); cell.colSpan = 2; tr.append(cell); $('subject-rows').append(tr);
   $('results').setAttribute('aria-busy', 'false');
  }
 }
 initTheme();
+initLanguage();
+$('updated').textContent = t('catalog.updating', 'Updating catalog...');
 window.addEventListener('hashchange', route);
 route(); start();
