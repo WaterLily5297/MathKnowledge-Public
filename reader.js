@@ -1,6 +1,8 @@
 'use strict';
 // Local handles and paths stay in memory. This module makes no network requests.
 window.FormosaReader = (() => {
+ // Messages are English unless the optional interface translations are loaded.
+ const t = (key, english) => (window.FormosaI18n ? window.FormosaI18n.t(key, english) : english);
  const formula = /\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|(?<!\\)\$(?!\$)(?:\\.|[^\\$\n])+?\$/g;
  const mathOptions = Object.freeze({output:'mathml',displayMode:false,throwOnError:true,
   trust:false,strict:'error',maxExpand:200,maxSize:10});
@@ -14,7 +16,7 @@ window.FormosaReader = (() => {
    try {
     window.katex.render(match[0].slice(width, -width), span, {...mathOptions,macros:{}});
    } catch (_) {
-    span.textContent = match[0]; span.title = 'Formula could not be rendered';
+    span.textContent = match[0]; span.title = t('reader.formula', 'Formula could not be rendered');
    }
    target.append(span); end = match.index + match[0].length;
   }
@@ -92,7 +94,10 @@ window.FormosaReader = (() => {
   const publicIds = new Set(publicItems.map(row => row.id));
   let records = new Map(), directories = [], busy = false, generation = 0;
   const urls = new Set();
-  const message = text => { status.textContent = text; };
+  let last = null;
+  const message = (key, text) => { last = [key, text]; status.textContent = t(key, text); };
+  // Keep the latest status in the chosen interface language.
+  if (window.FormosaI18n) window.FormosaI18n.onChange(() => { if (last) status.textContent = t(...last); });
   const release = () => { for (const url of urls) URL.revokeObjectURL(url); urls.clear(); };
   function controls() {
    connect.disabled = busy; storage.disabled = busy; disconnect.disabled = busy;
@@ -101,7 +106,7 @@ window.FormosaReader = (() => {
   async function choose(library) {
    if (busy) return;
    if (!window.showDirectoryPicker) {
-    message('Local folder access requires a browser that supports directory access, such as Chrome or Edge.'); return;
+    message('reader.noPicker', 'Local folder access requires a browser that supports directory access, such as Chrome or Edge.'); return;
    }
    busy = true; controls();
    try {
@@ -111,23 +116,24 @@ window.FormosaReader = (() => {
      const next = catalogIndex(catalog.rows, publicIds);
      if (!next.size) throw Error('No matching PDFs');
      generation++; release(); records = next; directories = [{handle:catalog.base,library:true}];
-     message('Local library connected. Open PDFs from the catalog. For files stored elsewhere, connect their storage folder.');
+     message('reader.connected', 'Local library connected. Open PDFs from the catalog. For files stored elsewhere, connect their storage folder.');
     } else {
      directories.push({handle,library:false});
-     message('Storage folder connected. Try opening the PDF again.');
+     message('reader.storageConnected', 'Storage folder connected. Try opening the PDF again.');
     }
     refresh();
    } catch (error) {
-    if (error.name !== 'AbortError') message(library
-     ? 'Could not connect. Choose the MathKnowledge folder containing catalog.json, and allow read access.'
-     : 'Could not connect the storage folder. Allow read access and try again.');
+    if (error.name !== 'AbortError') {
+     if (library) message('reader.connectFailed', 'Could not connect. Choose the MathKnowledge folder containing catalog.json, and allow read access.');
+     else message('reader.storageFailed', 'Could not connect the storage folder. Allow read access and try again.');
+    }
    } finally { busy = false; controls(); }
   }
   connect.addEventListener('click', () => choose(true));
   storage.addEventListener('click', () => choose(false));
   disconnect.addEventListener('click', () => {
    generation++; records.clear(); directories = []; release(); controls(); refresh();
-   message('Local library disconnected. Local file access has ended for this page.');
+   message('reader.disconnected', 'Local library disconnected. Local file access has ended for this page.');
   });
   window.addEventListener('pagehide', release);
   controls();
@@ -140,19 +146,18 @@ window.FormosaReader = (() => {
     // Open the tab during the click, before asynchronous file access, to avoid
     // popup blocking. Remove its opener before navigating to the PDF blob.
     const preview = window.open('about:blank', '_blank');
-    if (!preview) { message('Allow a new tab to open the local PDF, then try again.'); return; }
+    if (!preview) { message('reader.popup', 'Allow a new tab to open the local PDF, then try again.'); return; }
     preview.opener = null;
     try {
      const file = await resolvePdf(path, directories);
      if (generation !== currentGeneration) { preview.close(); return; }
      const pdf = file.type === 'application/pdf' ? file : file.slice(0, file.size, 'application/pdf');
      const url = URL.createObjectURL(pdf); urls.add(url); preview.location.replace(url);
-     message('PDF opened locally. No file was uploaded.');
+     message('reader.opened', 'PDF opened locally. No file was uploaded.');
     } catch (error) {
      preview.close();
-     message(error.message === 'PDF storage folder is not connected'
-      ? 'This PDF is outside the connected folders, or is missing. Connect its storage folder and try again.'
-      : 'Could not read this PDF. Check its availability and folder permission, then try again.');
+     if (error.message === 'PDF storage folder is not connected') message('reader.outside', 'This PDF is outside the connected folders, or is missing. Connect its storage folder and try again.');
+     else message('reader.readFailed', 'Could not read this PDF. Check its availability and folder permission, then try again.');
     }
    }
   };
