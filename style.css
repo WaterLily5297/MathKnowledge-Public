@@ -193,7 +193,7 @@ footer p { margin:.4rem 0 0; }
 #pdf-navigation { display:flex;align-items:center;gap:.7rem;flex-wrap:wrap; }
 #pdf-navigation label { display:flex;align-items:center;gap:.4rem; }
 #pdf-number { width:5.5rem;padding:.35rem; }
-#pdf-zoom { padding:.35rem;background:var(--paper);color:var(--ink);border:1px solid var(--line); }
+#pdf-zoom,#pdf-quality { padding:.35rem;background:var(--paper);color:var(--ink);border:1px solid var(--line); }
 #pdf-download { margin-left:1rem; }
 .pdf-pages { padding:0 0 2rem;overflow:auto;min-height:20rem; }
 .pdf-pages img { display:block;width:100%;height:auto;background:#fff; }
