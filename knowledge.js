@@ -132,7 +132,9 @@ window.FormosaKnowledge = {init(options) {
   if (from) trail.push({id:from.id, title:from.title});
   else if (from === '') trail = [];
   selected = id; markSelected();
-  const current = ++detailRequest;
+  // Remove old PDF links while checking the newly selected concept's sharing.
+  clearDetail(t('knowledge.loading', 'Loading concept...'));
+  const current = detailRequest;
   $('knowledge-detail').setAttribute('aria-busy', 'true');
   try {
    const result = await json('knowledge/concepts/' + encodeURIComponent(id));
@@ -164,6 +166,9 @@ window.FormosaKnowledge = {init(options) {
  }
  async function load({keep = true} = {}) {
   const current = ++listRequest;
+  // A new filter supersedes any in-flight selection and its old PDF links.
+  clearDetail(t('knowledge.loading', 'Loading concept...'));
+  $('knowledge-list').replaceChildren();
   const params = new URLSearchParams();
   const query = $('knowledge-query').value.trim().slice(0, 120), subject = $('knowledge-subject').value;
   if (query) params.set('query', query);
@@ -225,7 +230,7 @@ window.FormosaKnowledge = {init(options) {
  $('knowledge-reset').addEventListener('click', () => { $('knowledge-query').value = ''; $('knowledge-subject').value = ''; load({keep:false}); $('knowledge-query').focus(); });
  $('knowledge-empty-reset').addEventListener('click', () => $('knowledge-reset').click());
  $('knowledge-retry').addEventListener('click', () => load());
- document.addEventListener('visibilitychange', () => { if (visible && !document.hidden && selected) choose(selected, {from:null}); });
+ document.addEventListener('visibilitychange', () => { if (visible && !document.hidden) load(); });
 
  if (!options.available) {
   $('knowledge-nav').hidden = true;
@@ -236,12 +241,26 @@ window.FormosaKnowledge = {init(options) {
  function show(active, linked) {
   visible = active && options.available;
   clearInterval(timer);
-  if (!visible) return;
-  if (linked && identifier.test(linked)) selected = linked;
-  if (!started) { started = true; loadSource(); load(); }
-  else if (selected) choose(selected, {from:null});
+  if (!visible) {
+   clearTimeout(typing);
+   ++listRequest; ++detailRequest;
+   $('knowledge-list').setAttribute('aria-busy', 'false');
+   $('knowledge-detail').setAttribute('aria-busy', 'false');
+   return;
+  }
+  if (linked && identifier.test(linked)) {
+   if (linked !== selected) trail = [];
+   selected = linked;
+  }
+  if (!started) { started = true; loadSource(); }
+  // Restore the list as well as the detail after a failed initial or filtered load.
+  load();
   // Sharing can change while the desk stays open; check the current concept each minute.
-  timer = setInterval(() => { if (!document.hidden && selected) choose(selected, {from:null}); }, 60000);
+  timer = setInterval(() => {
+   if (document.hidden || $('knowledge-list').getAttribute('aria-busy') === 'true') return;
+   if (rows.length && selected) choose(selected, {from:null});
+   else load();
+  }, 60000);
  }
  return {show};
 }};
