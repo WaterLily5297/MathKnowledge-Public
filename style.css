@@ -189,6 +189,10 @@ footer p { margin:.4rem 0 0; }
 .map-swatch.sel { background:var(--teal);border-color:var(--teal); }
 .map-swatch.pre { background:var(--mint);border-color:var(--teal); }
 .map-swatch.next { background:var(--amber-bg);border-color:var(--amber); }
+.map-ready { display:flex;flex-wrap:wrap;align-items:baseline;gap:.3rem .6rem;font-size:.9rem;margin:0 0 .7rem;max-width:none; }
+.map-ready-count { color:var(--muted);margin-right:.6rem; }
+.map-ready-theory { background:var(--mint);border:1px solid var(--teal);color:var(--teal);padding:.05rem .55rem;font-size:.88rem;border-radius:0; }
+.map-ready-theory:hover { background:var(--paper); }
 .map-wrap { overflow-x:auto;border-top:1px solid var(--line);border-bottom:1px solid var(--line); }
 #theory-map { display:block;width:100%;min-width:860px;height:auto; }
 #theory-map text { font-family:var(--j-serif);font-variant-numeric:lining-nums; }

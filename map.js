@@ -21,6 +21,13 @@ window.FormosaMap = (() => {
   visit(id);
   return order;
  }
+ // Theories not yet studied whose direct prerequisites are all studied, in map order.
+ function readyTheories(map, studied) {
+  return map.nodes
+   .filter(node => !studied.has(node.id) && map.edges.every(edge => edge.to !== node.id || studied.has(edge.from)))
+   .sort((a, b) => a.layer - b.layer || a.x - b.x)
+   .map(node => node.id);
+ }
  // Labels with spaces wrap greedily. Labels without them (Japanese) split once at the word
  // boundary that balances the two lines best, never right before punctuation or a
  // one-character word such as a particle.
@@ -224,9 +231,21 @@ window.FormosaMap = (() => {
     second.append(list);
    } else second.append(el('p', 'map-empty', t('map.noBooks', 'No catalog books for this theory yet.')));
    panel.replaceChildren(first, second);
+   renderReady();
    onSelect(id);
    // After a click on the map, bring the details into view if they start below the screen.
    if (reveal && panel.getBoundingClientRect().top > window.innerHeight - 120) panel.scrollIntoView({block: 'start'});
+  }
+
+  // Study progress and the theories whose prerequisites are all marked studied.
+  function renderReady() {
+   const line = $('map-ready');
+   const done = map.nodes.filter(node => studied.has(node.id)).length;
+   const ready = readyTheories(map, studied);
+   line.replaceChildren(el('span', 'map-ready-count', t('map.studiedCount', '{n} of {total} studied', {n:done, total:map.nodes.length})));
+   if (!ready.length) { line.append(' ', t('map.allDone', 'Every theory on the map is marked studied.')); return; }
+   line.append(' ', t('map.ready', 'Ready to study next:'));
+   for (const id of ready) line.append(' ', button(name(id), 'map-ready-theory', () => select(id, {reveal: true})));
   }
 
   function render() {
@@ -253,5 +272,5 @@ window.FormosaMap = (() => {
   // refresh() redraws the details, for example after a local library is connected.
   return {refresh: () => { if (map && current) select(current); }, get current() { return current; }};
  }
- return {readingRoute, wrapLabel, init};
+ return {readingRoute, readyTheories, wrapLabel, init};
 })();
