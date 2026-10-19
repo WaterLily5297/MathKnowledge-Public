@@ -6,7 +6,13 @@ const types = {book:'Books and lecture notes','journal-article':'Papers','journa
 const languages = {en:'English',zh:'Chinese',ja:'Japanese',fr:'French',de:'German',it:'Italian',es:'Spanish',pt:'Portuguese',ru:'Russian',und:'Unspecified',mul:'Multiple languages',la:'Latin'};
 const pageTitles = {home:'Home',catalog:'Catalog',about:'About'};
 const size = 20;
+// Catalog filters that a shared link can carry: URL parameter -> form field id.
+const linkFields = {q:'query', subject:'subject', type:'type', language:'language'};
 let data, localReader, page = 1;
+// Read before route() runs; ?id= links to one resource by its stable public ID.
+const linked = (() => {
+ try { return new URLSearchParams(location.search); } catch (_) { return new URLSearchParams(); }
+})();
 const element = (tag, content, className) => {
  const node = document.createElement(tag);
  if (content !== undefined) node.textContent = content;
@@ -49,9 +55,56 @@ function route() {
   else link.removeAttribute('aria-current');
  });
  document.title = t('page.' + view, pageTitles[view]) + t('page.suffix', ' - Formosa Mathematics Reading Room');
+ if (view === 'catalog') { if (data) writeLink(); return; }
+ // Filter parameters only describe the catalog view.
+ try {
+  const url = new URL(location.href);
+  for (const name of ['id', ...Object.keys(linkFields)]) url.searchParams.delete(name);
+  if (url.href !== location.href) history.replaceState(history.state, '', url);
+ } catch (_) {}
 }
 function showCatalog() {
  if (location.hash === '#catalog') route(); else location.hash = 'catalog';
+}
+// Keep the address in step with the filters so a search can be shared as a link.
+function writeLink() {
+ if (location.hash !== '#catalog') return;
+ try {
+  const url = new URL(location.href);
+  url.searchParams.delete('id');
+  for (const [name, id] of Object.entries(linkFields)) {
+   const value = $(id).value.trim();
+   if (value) url.searchParams.set(name, value); else url.searchParams.delete(name);
+  }
+  if (url.href !== location.href) history.replaceState(history.state, '', url);
+ } catch (_) {}
+}
+function applyLink() {
+ const id = linked.get('id');
+ let applied = false;
+ if (id) {
+  const row = data.items.find(item => item.id === id);
+  // The exact title finds the resource and shows the reader what is being filtered.
+  if (row) { $('query').value = row.title; applied = true; }
+  else $('link-status').textContent = t('catalog.missingLink', 'The linked resource is not in the current catalog.');
+ }
+ for (const [name, field] of Object.entries(linkFields)) {
+  const value = (linked.get(name) || '').slice(0, 200);
+  if (!value || (name === 'q' && applied)) continue;
+  const select = $(field);
+  if (select.tagName === 'SELECT' && ![...select.options].some(option => option.value === value)) continue;
+  select.value = value; applied = true;
+ }
+ return applied || Boolean(id);
+}
+async function copyLink() {
+ writeLink();
+ try {
+  await navigator.clipboard.writeText(location.href);
+  $('link-status').textContent = t('catalog.copied', 'Link copied.');
+ } catch (_) {
+  $('link-status').textContent = t('catalog.copyFailed', 'Could not copy. Copy the address from the address bar instead.');
+ }
 }
 function render() {
  const query = $('query').value.trim().toLocaleLowerCase();
@@ -91,6 +144,7 @@ function render() {
   cell.colSpan = 4; tr.append(cell); $('results').append(tr);
  }
  $('results').setAttribute('aria-busy', 'false');
+ writeLink();
  $('page-label').textContent = t('catalog.page', 'Page {page} of {pages}', {page:i18n.number(page), pages:i18n.number(pages)});
  $('previous').disabled = page === 1; $('next').disabled = page === pages;
 }
@@ -163,11 +217,12 @@ async function start() {
   localReader = window.FormosaReader.init(data.items, render);
   renderMeta();
   $('filters').addEventListener('submit', event => event.preventDefault());
-  for (const id of ['query','subject','type','language']) $(id).addEventListener(id === 'query' ? 'input' : 'change', () => { page = 1; render(); });
+  for (const id of ['query','subject','type','language']) $(id).addEventListener(id === 'query' ? 'input' : 'change', () => { page = 1; $('link-status').textContent = ''; render(); });
   $('home-search').addEventListener('submit', event => {
    event.preventDefault(); $('filters').reset(); $('query').value = $('home-query').value; page = 1; render(); showCatalog();
   });
-  $('clear').addEventListener('click', () => { $('filters').reset(); page = 1; render(); $('query').focus(); });
+  $('clear').addEventListener('click', () => { $('filters').reset(); page = 1; $('link-status').textContent = ''; render(); $('query').focus(); });
+  $('copy-link').addEventListener('click', copyLink);
   $('previous').addEventListener('click', () => { page--; render(); $('catalog-title').scrollIntoView(); });
   $('next').addEventListener('click', () => { page++; render(); $('catalog-title').scrollIntoView(); });
   renderSubjects();
@@ -180,7 +235,9 @@ async function start() {
   document.querySelectorAll('[data-kind]').forEach(link => {
    link.addEventListener('click', () => filterBy({kind:link.dataset.kind}));
   });
+  const fromLink = applyLink();
   render();
+  if (fromLink) showCatalog();
  } catch (_) {
   const message = t('catalog.failed', 'Catalog could not be loaded. Refresh the page to try again.');
   $('updated').textContent = t('catalog.unavailable', 'Catalog temporarily unavailable'); $('result-count').textContent = message;
