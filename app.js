@@ -6,7 +6,22 @@ const types = {book:'Books and lecture notes','journal-article':'Papers','journa
 const languages = {en:'English',zh:'Chinese',ja:'Japanese',fr:'French',de:'German',it:'Italian',es:'Spanish',pt:'Portuguese',ru:'Russian',und:'Unspecified',mul:'Multiple languages',la:'Latin'};
 const pageTitles = {home:'Home',catalog:'Catalog',about:'About'};
 const size = 20;
-let data, localReader, features, page = 1;
+let data, localReader, features, theoryMap, page = 1;
+// Shareable state lives after the view in the hash (#catalog?q=..., #map?theory=...), so links
+// work on GitHub Pages and on the live gateway, which refuses query strings on its pages.
+const linkFields = {q:'query', subject:'subject', type:'type', language:'language'};
+const views = ['home', 'catalog', 'search', 'shelf', 'paths', 'map', 'about'];
+const hashView = () => location.hash.slice(1).split('?')[0];
+const hashParams = () => new URLSearchParams(location.hash.slice(1).split('?').slice(1).join('?'));
+// Read before route() runs. Older links put the parameters in the query string (?id=...#catalog).
+const linked = (() => {
+ const params = new URLSearchParams();
+ try {
+  for (const source of [new URLSearchParams(location.search), hashParams()])
+   for (const [key, value] of source) if (['id', 'theory', ...Object.keys(linkFields)].includes(key)) params.set(key, value);
+ } catch (_) {}
+ return params;
+})();
 const element = (tag, content, className) => {
  const node = document.createElement(tag);
  if (content !== undefined) node.textContent = content;
@@ -45,18 +60,76 @@ function titleLink(row) {
  return title;
 }
 function route() {
- const requested = location.hash.slice(1);
- const view = ['home', 'catalog', 'search', 'shelf', 'paths', 'about'].includes(requested) ? requested : 'home';
+ const requested = hashView();
+ const view = views.includes(requested) ? requested : 'home';
  document.querySelectorAll('[data-view]').forEach(section => { section.hidden = section.dataset.view !== view; });
  document.querySelectorAll('[data-nav]').forEach(link => {
   if (link.dataset.nav === view) link.setAttribute('aria-current', 'page');
   else link.removeAttribute('aria-current');
  });
- document.title = ({home:'Home',catalog:'Catalog',search:'Full-text search',shelf:'Bookshelf',paths:'Reading paths',about:'About'})[view] + ' - Formosa Mathematics Reading Room';
+ document.title = ({home:'Home',catalog:'Catalog',search:'Full-text search',shelf:'Bookshelf',paths:'Reading paths',map:'Theory map',about:'About'})[view] + ' - Formosa Mathematics Reading Room';
  if(view==='shelf'&&features)features.renderShelf();
+ if (view === 'catalog' && data) writeLink();
+ if (view === 'map' && theoryMap && theoryMap.current) writeTheory(theoryMap.current);
 }
 function showCatalog() {
- if (location.hash === '#catalog') route(); else location.hash = 'catalog';
+ if (hashView() === 'catalog') route(); else location.hash = 'catalog';
+}
+function setHash(hash) {
+ try {
+  const url = new URL(location.href);
+  // Parameters from an older link move into the hash once they are applied.
+  for (const name of ['id', 'theory', ...Object.keys(linkFields)]) url.searchParams.delete(name);
+  url.hash = hash;
+  if (url.href !== location.href) history.replaceState(history.state, '', url);
+ } catch (_) {}
+}
+// Keep the address in step with the filters so a search can be shared as a link.
+function writeLink() {
+ if (hashView() !== 'catalog') return;
+ const params = new URLSearchParams();
+ for (const [name, id] of Object.entries(linkFields)) {
+  const value = $(id).value.trim();
+  if (value) params.set(name, value);
+ }
+ setHash('catalog' + ([...params].length ? '?' + params : ''));
+}
+function writeTheory(id) {
+ if (hashView() === 'map') setHash('map?' + new URLSearchParams({theory:id}));
+}
+function applyLink(linked) {
+ const id = linked.get('id');
+ let applied = false;
+ if (id) {
+  const row = data.items.find(item => item.id === id);
+  // The exact title finds the resource and shows the reader what is being filtered.
+  if (row) { $('query').value = row.title; applied = true; }
+  else $('link-status').textContent = t('catalog.missingLink', 'The linked resource is not in the current catalog.');
+ }
+ for (const [name, field] of Object.entries(linkFields)) {
+  const value = (linked.get(name) || '').slice(0, 200);
+  if (!value || (name === 'q' && applied)) continue;
+  const select = $(field);
+  if (select.tagName === 'SELECT' && ![...select.options].some(option => option.value === value)) continue;
+  select.value = value; applied = true;
+ }
+ return applied || Boolean(id);
+}
+async function copyLink() {
+ writeLink();
+ try {
+  await navigator.clipboard.writeText(location.href);
+  $('link-status').textContent = t('catalog.copied', 'Link copied.');
+ } catch (_) {
+  $('link-status').textContent = t('catalog.copyFailed', 'Could not copy. Copy the address from the address bar instead.');
+ }
+}
+// Opens the catalog on one resource, keeping this page (and a connected local library).
+function showResource(id) {
+ const row = data.items.find(item => item.id === id);
+ if (!row) return;
+ $('filters').reset(); $('link-status').textContent = '';
+ $('query').value = row.title; page = 1; render(); showCatalog();
 }
 function render() {
  const query = $('query').value.trim().toLocaleLowerCase();
@@ -100,6 +173,7 @@ function render() {
  $('results').setAttribute('aria-busy', 'false');
  $('page-label').textContent = t('catalog.page', 'Page {page} of {pages}', {page:i18n.number(page), pages:i18n.number(pages)});
  $('previous').disabled = page === 1; $('next').disabled = page === pages;
+ writeLink();
 }
 function renderSubjects() {
  $('subject-rows').replaceChildren();
@@ -168,17 +242,18 @@ async function start() {
   data = await response.json();
   if (data.schema !== 1 || !Array.isArray(data.items) || !Array.isArray(data.subjects)) throw Error('Invalid catalog format');
   data.labels = new Map(data.subjects.map(subject => [subject.id, subject.label]));
-  localReader = window.FormosaReader.init(data.items, render);
+  localReader = window.FormosaReader.init(data.items, () => { render(); if (theoryMap) theoryMap.refresh(); });
   features=window.FormosaFeatures.init(data,{element,titleLink,localReader});
   if(data.shared_pdfs){$('local-library').hidden=true;$('shared-banner').hidden=false;$('shared-status').textContent=Object.keys(data.shared_pdfs).length+' PDFs available for public reading and full-text search.';$('available-control').hidden=false;$('available-only').checked=true;$('live-library').hidden=true;}
   else if($('live-library').dataset.expires && Date.parse($('live-library').dataset.expires)<Date.now())$('live-library').hidden=true;
   renderMeta();
   $('filters').addEventListener('submit', event => event.preventDefault());
-  for (const id of ['query','subject','type','language','available-only']) $(id).addEventListener(id === 'query' ? 'input' : 'change', () => { page = 1; render(); });
+  for (const id of ['query','subject','type','language','available-only']) $(id).addEventListener(id === 'query' ? 'input' : 'change', () => { page = 1; $('link-status').textContent = ''; render(); });
   $('home-search').addEventListener('submit', event => {
    event.preventDefault(); $('filters').reset(); $('query').value = $('home-query').value; page = 1; render(); showCatalog();
   });
-  $('clear').addEventListener('click', () => { $('filters').reset(); page = 1; render(); $('query').focus(); });
+  $('clear').addEventListener('click', () => { $('filters').reset(); page = 1; $('link-status').textContent = ''; render(); $('query').focus(); });
+  $('copy-link').addEventListener('click', copyLink);
   $('previous').addEventListener('click', () => { page--; render(); $('catalog-title').scrollIntoView(); });
   $('next').addEventListener('click', () => { page++; render(); $('catalog-title').scrollIntoView(); });
   renderSubjects();
@@ -191,7 +266,14 @@ async function start() {
   document.querySelectorAll('[data-kind]').forEach(link => {
    link.addEventListener('click', () => filterBy({kind:link.dataset.kind}));
   });
+  if (window.FormosaMap) {
+   theoryMap = window.FormosaMap.init({rows:new Map(data.items.map(row => [row.id, row])), titleLink, languageLabel,
+    showResource, onSelect:writeTheory, initial:linked.get('theory')});
+  }
+  const fromLink = applyLink(linked);
   render();
+  if (fromLink) showCatalog();
+  else if (linked.has('theory')) { setHash('map?' + new URLSearchParams({theory:linked.get('theory')})); route(); }
  } catch (_) {
   const message = t('catalog.failed', 'Catalog could not be loaded. Refresh the page to try again.');
   $('updated').textContent = t('catalog.unavailable', 'Catalog temporarily unavailable'); $('result-count').textContent = message;
@@ -203,5 +285,14 @@ async function start() {
 initTheme();
 initLanguage();
 $('updated').textContent = t('catalog.updating', 'Updating catalog...');
-window.addEventListener('hashchange', route);
+// A link pasted into this tab only changes the hash, so apply its parameters here too.
+window.addEventListener('hashchange', () => {
+ const params = hashParams();
+ if (data && hashView() === 'catalog' && (params.has('id') || Object.keys(linkFields).some(name => params.has(name)))) {
+  $('filters').reset(); $('link-status').textContent = '';
+  applyLink(params); page = 1; render();
+ }
+ if (theoryMap && hashView() === 'map' && params.get('theory') && params.get('theory') !== theoryMap.current) theoryMap.show(params.get('theory'));
+ route();
+});
 route(); start();
