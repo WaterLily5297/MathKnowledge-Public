@@ -4,11 +4,12 @@ const i18n = window.FormosaI18n;
 const t = (key, english, vars) => i18n.t(key, english, vars);
 const types = {book:'Books and lecture notes','journal-article':'Papers','journal-issue':'Journal issues',errata:'Errata and editions',encyclopedia:'Encyclopedias and reference collections',software:'Software',project:'Projects',dataset:'Datasets',reference:'Reference material'};
 const languages = {en:'English',zh:'Chinese',ja:'Japanese',fr:'French',de:'German',it:'Italian',es:'Spanish',pt:'Portuguese',ru:'Russian',und:'Unspecified',mul:'Multiple languages',la:'Latin'};
-const pageTitles = {home:'Home',catalog:'Catalog',about:'About'};
+const pageTitles = {home:'Home',catalog:'Catalog',map:'Theory map',about:'About'};
+const views = Object.keys(pageTitles);
 const size = 20;
 // Catalog filters that a shared link can carry: URL parameter -> form field id.
 const linkFields = {q:'query', subject:'subject', type:'type', language:'language'};
-let data, localReader, page = 1;
+let data, localReader, theoryMap, page = 1;
 // Read before route() runs; ?id= links to one resource by its stable public ID.
 const linked = (() => {
  try { return new URLSearchParams(location.search); } catch (_) { return new URLSearchParams(); }
@@ -48,20 +49,37 @@ function titleLink(row) {
 }
 function route() {
  const requested = location.hash.slice(1);
- const view = ['home', 'catalog', 'about'].includes(requested) ? requested : 'home';
+ const view = views.includes(requested) ? requested : 'home';
  document.querySelectorAll('[data-view]').forEach(section => { section.hidden = section.dataset.view !== view; });
  document.querySelectorAll('[data-nav]').forEach(link => {
   if (link.dataset.nav === view) link.setAttribute('aria-current', 'page');
   else link.removeAttribute('aria-current');
  });
  document.title = t('page.' + view, pageTitles[view]) + t('page.suffix', ' - Formosa Mathematics Reading Room');
- if (view === 'catalog') { if (data) writeLink(); return; }
- // Filter parameters only describe the catalog view.
+ if (view === 'catalog' && data) writeLink();
+ if (view === 'map' && theoryMap && theoryMap.current) writeTheory(theoryMap.current);
+ // Filter parameters describe the catalog view and ?theory= the map; other views drop them.
  try {
   const url = new URL(location.href);
-  for (const name of ['id', ...Object.keys(linkFields)]) url.searchParams.delete(name);
+  const stale = [...(view === 'catalog' ? [] : ['id', ...Object.keys(linkFields)]), ...(view === 'map' ? [] : ['theory'])];
+  for (const name of stale) url.searchParams.delete(name);
   if (url.href !== location.href) history.replaceState(history.state, '', url);
  } catch (_) {}
+}
+function writeTheory(id) {
+ if (location.hash !== '#map') return;
+ try {
+  const url = new URL(location.href);
+  url.searchParams.set('theory', id);
+  if (url.href !== location.href) history.replaceState(history.state, '', url);
+ } catch (_) {}
+}
+// Opens the catalog on one resource, keeping this page (and a connected local library).
+function showResource(id) {
+ const row = data.items.find(item => item.id === id);
+ if (!row) return;
+ $('filters').reset(); $('link-status').textContent = '';
+ $('query').value = row.title; page = 1; render(); showCatalog();
 }
 function showCatalog() {
  if (location.hash === '#catalog') route(); else location.hash = 'catalog';
@@ -214,7 +232,7 @@ async function start() {
   data = await response.json();
   if (data.schema !== 1 || !Array.isArray(data.items) || !Array.isArray(data.subjects)) throw Error('Invalid catalog format');
   data.labels = new Map(data.subjects.map(subject => [subject.id, subject.label]));
-  localReader = window.FormosaReader.init(data.items, render);
+  localReader = window.FormosaReader.init(data.items, () => { render(); if (theoryMap) theoryMap.refresh(); });
   renderMeta();
   $('filters').addEventListener('submit', event => event.preventDefault());
   for (const id of ['query','subject','type','language']) $(id).addEventListener(id === 'query' ? 'input' : 'change', () => { page = 1; $('link-status').textContent = ''; render(); });
@@ -235,9 +253,14 @@ async function start() {
   document.querySelectorAll('[data-kind]').forEach(link => {
    link.addEventListener('click', () => filterBy({kind:link.dataset.kind}));
   });
+  if (window.FormosaMap) {
+   theoryMap = window.FormosaMap.init({rows:new Map(data.items.map(row => [row.id, row])), titleLink, languageLabel,
+    showResource, onSelect:writeTheory, initial:linked.get('theory')});
+  }
   const fromLink = applyLink();
   render();
   if (fromLink) showCatalog();
+  else if (linked.has('theory') && !location.hash) { location.hash = 'map'; writeTheory(linked.get('theory')); }
  } catch (_) {
   const message = t('catalog.failed', 'Catalog could not be loaded. Refresh the page to try again.');
   $('updated').textContent = t('catalog.unavailable', 'Catalog temporarily unavailable'); $('result-count').textContent = message;
