@@ -32,7 +32,7 @@ function sourceLink(row, title, className) {
 }
 function titleLink(row) {
  if (data.shared_pdfs && data.shared_pdfs[row.id]) {
-  const link = sourceLink({...row,source:'pdf/'+encodeURIComponent(row.id)}, '', 'title-link');
+  const link = sourceLink({...row,source:'read/'+encodeURIComponent(row.id)}, '', 'title-link');
   window.FormosaReader.renderTitle(link, row.title); return link;
  }
  const local = localReader && localReader.has(row.id);

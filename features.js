@@ -5,14 +5,14 @@ window.FormosaFeatures={init(data,helpers){
  try{const saved=JSON.parse(localStorage.getItem('formosa-public-shelf')||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved))shelf=Object.assign(Object.create(null),saved);}catch(_){}
  const persist=()=>{try{localStorage.setItem('formosa-public-shelf',JSON.stringify(shelf));}catch(_){}};
  function original(id,page=1){const row=books.get(id);if(!row)return el('span','Unavailable');
-  const link=el('a',shared[id]?'Read PDF ↗':'Original source ↗');link.href=shared[id]?'pdf/'+encodeURIComponent(id)+'#page='+page:row.source;link.target='_blank';link.rel='noopener noreferrer';return link;}
+  const link=el('a',shared[id]?'Read PDF ↗':'Original source ↗');link.href=shared[id]?'read/'+encodeURIComponent(id)+'#page='+page:row.source;link.target='_blank';link.rel='noopener noreferrer';return link;}
  function show(){if(!dialog.open)dialog.showModal();}
  function details(id){const row=books.get(id);if(!row)return;const body=$('book-detail');body.replaceChildren();
   const title=el('h2');window.FormosaReader.renderTitle(title,row.title);body.append(title,el('p',row.authors),el('p',[row.year,row.language,...row.subjects.map(id=>data.labels.get(id)||id)].filter(Boolean).join(' / ')));
   if(shared[id]){const license=shared[id];const note=el('p',license.license);if(license.license_url){const link=el('a','License terms');link.href=license.license_url;link.target='_blank';link.rel='noopener noreferrer';note.append(' - ',link);}body.append(note);}
   const prior=shelf[id]||{},label=el('label','Reading status '),status=el('select');for(const [value,text]of [['want','Want to read'],['reading','Reading'],['done','Finished']]){const option=el('option',text);option.value=value;status.append(option);}status.value=['want','reading','done'].includes(prior.status)?prior.status:'want';label.append(status);
   const pageLabel=el('label','PDF page '),page=el('input');page.type='number';page.min='1';page.max='100000';page.value=Number.isInteger(prior.page)&&prior.page>0&&prior.page<=100000?String(prior.page):'1';pageLabel.append(page);
-  const read=original(id,Number(page.value));page.addEventListener('input',()=>{if(shared[id])read.href='pdf/'+encodeURIComponent(id)+'#page='+Math.max(1,Math.min(100000,Number(page.value)||1));});
+  const read=original(id,Number(page.value));page.addEventListener('input',()=>{if(shared[id])read.href='read/'+encodeURIComponent(id)+'#page='+Math.max(1,Math.min(100000,Number(page.value)||1));});
   const save=el('button','Save to bookshelf','primary');save.addEventListener('click',()=>{const position=Number(page.value);if(!Number.isInteger(position)||position<1||position>100000)return;shelf[id]={status:status.value,page:position};persist();save.textContent='Saved';renderShelf();});
   body.append(read,el('p'),label,pageLabel,save);show();
  }
