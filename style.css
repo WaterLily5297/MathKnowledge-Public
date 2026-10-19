@@ -200,3 +200,9 @@ footer p { margin:.4rem 0 0; }
 .pdf-pages[data-zoom="125"] img { width:125%;max-width:none; }
 .pdf-pages[data-zoom="150"] img { width:150%;max-width:none; }
 .pdf-pages[data-zoom="200"] img { width:200%;max-width:none; }
+.rich-text{white-space:normal;line-height:1.7;overflow-wrap:anywhere}
+.rich-text pre{white-space:pre;overflow:auto;padding:1rem;background:var(--surface);border:1px solid var(--line)}
+.rich-text table{border-collapse:collapse;width:100%;margin:1rem 0}
+.rich-text th,.rich-text td{border:1px solid var(--line);padding:.4rem .65rem}
+.rich-text p:first-child{margin-top:0}.rich-text p:last-child{margin-bottom:0}
+.math-block{display:block;overflow-x:auto;overflow-y:hidden;padding-block:.3rem;margin:1rem 0;text-align:center}
