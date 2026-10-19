@@ -71,6 +71,11 @@ tfoot td { color:var(--muted);font-size:.85rem;padding:.6rem;font-style:italic; 
 .j-margin section:first-child h2 { margin-top:0; }
 .j-margin h2 { font-size:1.0625rem;margin:1.7rem 0 .4rem; }
 .j-margin p,.j-margin a { font-size:.85rem; }
+.local-library { border-bottom:1px solid var(--line);padding:.8rem 0; }
+.local-actions { display:flex;gap:.6rem;flex-wrap:wrap; }
+.local-library p { margin:.5rem 0 0;font-size:.85rem; }
+.title-math math { font-size:1em; }
+button.title-link { text-align:left;background:none;border:0;padding:0;color:var(--teal);text-decoration:underline;text-underline-offset:.18em; }
 .j-features { margin-top:2rem; }
 .j-features h2 { margin-top:0; }
 .j-features p { margin:.65rem 0; }

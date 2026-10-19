@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const types = {book:'Books and lecture notes','journal-article':'Papers','journal-issue':'Journal issues',errata:'Errata and editions',encyclopedia:'Encyclopedias and reference collections',software:'Software',project:'Projects',dataset:'Datasets',reference:'Reference material'};
 const languages = {en:'English',zh:'Chinese',ja:'Japanese',fr:'French',de:'German',it:'Italian',es:'Spanish',pt:'Portuguese',ru:'Russian',und:'Unspecified',mul:'Multiple languages',la:'Latin'};
 const size = 20;
-let data, page = 1;
+let data, localReader, page = 1;
 const element = (tag, content, className) => {
  const node = document.createElement(tag);
  if (content !== undefined) node.textContent = content;
@@ -17,6 +17,16 @@ function sourceLink(row, title, className) {
  const link = element('a', title, className);
  link.href = row.source; link.target = '_blank'; link.rel = 'noopener noreferrer';
  return link;
+}
+function titleLink(row) {
+ const local = localReader && localReader.has(row.id);
+ const title = local ? element('button', undefined, 'title-link') : sourceLink(row, '', 'title-link');
+ if (local) {
+  title.type = 'button'; title.title = 'Open local PDF';
+  title.addEventListener('click', () => localReader.open(row.id));
+ }
+ window.FormosaReader.renderTitle(title, row.title);
+ return title;
 }
 function route() {
  const requested = location.hash.slice(1);
@@ -46,7 +56,8 @@ function render() {
  $('results').replaceChildren();
  for (const row of rows.slice((page - 1) * size, page * size)) {
   const tr = element('tr'), title = element('td'), subject = element('td'), edition = element('td'), source = element('td');
-  title.append(sourceLink(row, row.title, 'title-link'), element('span', row.authors, 'author'));
+  title.append(titleLink(row), element('span', row.authors, 'author'));
+  if (localReader && localReader.has(row.id)) title.append(element('span', 'Local PDF linked', 'resource-meta'));
   subject.append(element('span', row.subjects.map(id => data.labels.get(id) || id).join(' / ') || 'Unclassified', 'subject-list'), element('span', types[row.type] || 'Resource', 'resource-meta'));
   edition.append(element('span', row.year || '—'), element('span', languages[row.language] || row.language, 'resource-meta'));
   source.append(sourceLink(row, 'Original source ↗', 'source-link'));
@@ -93,6 +104,7 @@ async function start() {
   data = await response.json();
   if (data.schema !== 1 || !Array.isArray(data.items) || !Array.isArray(data.subjects)) throw Error('Invalid catalog format');
   data.labels = new Map(data.subjects.map(subject => [subject.id, subject.label]));
+  localReader = window.FormosaReader.init(data.items, render);
   $('total').textContent = data.items.length.toLocaleString('en-US');
   $('updated').textContent = 'Catalog updated ' + data.updated;
   for (const subject of data.subjects) option($('subject'), subject.id, data.labels.get(subject.id));

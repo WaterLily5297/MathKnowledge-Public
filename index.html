@@ -8,6 +8,8 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Formosa · Mathematics Reading Room</title>
 <link rel="stylesheet" href="style.css">
+<script src="katex.min.js" defer></script>
+<script src="reader.js" defer></script>
 <script src="app.js" defer></script>
 </head>
 <body>
@@ -19,6 +21,10 @@
  <label class="theme-control"><span class="sr-only">Reading theme</span><select id="theme" aria-label="Reading theme"><option value="system">System theme</option><option value="light">Light</option><option value="dark">Dark</option><option value="night">Warm night</option></select></label></div>
 </header>
 <main id="main" tabindex="-1">
+ <section class="local-library" aria-label="Local PDF access">
+  <div class="local-actions"><button id="connect-library" class="secondary" type="button" disabled>Connect local library</button><button id="connect-storage" class="secondary" type="button" hidden>Connect storage folder</button><button id="disconnect-library" class="secondary" type="button" hidden>Disconnect</button></div>
+  <p id="local-status" class="subtle" role="status" aria-live="polite">To read PDFs on this computer, connect your MathKnowledge folder. Files stay in your browser and are never uploaded.</p>
+ </section>
  <section id="home" data-view="home" aria-label="Library home">
   <div class="j-home"><div class="j-main">
    <form id="home-search" class="j-search" role="search"><label><span class="sr-only">Search the public catalog</span><input id="home-query" type="search" maxlength="200" autocomplete="off" placeholder="Search by title, author or subject"></label><button class="primary" type="submit">Search</button></form>
@@ -41,7 +47,9 @@
  <section id="about" data-view="about" aria-labelledby="about-title" hidden>
   <h1 id="about-title">About the public edition</h1><p class="lead">A reading gateway to mathematics resources.</p>
   <h2>Catalog and synchronization</h2><p>The public catalog is built from local bibliographic records using the same classification rules. Each publication updates the existing pages and catalog in place. The date in the masthead identifies the latest catalog update.</p>
-  <h2>Public scope</h2><p>Public entries contain titles, authors, subjects, resource types, years, languages and original sources. Personal notes, OneNote pages, local paths and local application services are excluded. Local file downloads and full-text book searches are unavailable here.</p>
+  <h2>Public scope</h2><p>Public entries contain titles, authors, subjects, resource types, years, languages and original sources. Personal notes, OneNote pages, local paths and local application services are excluded.</p>
+  <h2>Read local PDFs</h2><p>Connect your MathKnowledge folder to open matching PDFs directly on this computer. Your browser asks for read permission. If books are stored on another drive, connect their containing storage folder too. Folder access lasts for this page and can be disconnected. No PDFs or local catalog data are uploaded. Other visitors cannot read files on your computer; they can follow the public source links.</p>
+  <h2>Mathematics in titles</h2><p>Title formulas are rendered locally with KaTeX and native MathML. The original searchable title is preserved. KaTeX is distributed under its <a href="katex-LICENSE.txt">MIT license</a>.</p>
   <h2>Sources and use</h2><p>Source links lead to authors, universities, publishers or public repositories. Check editions, errata and usage terms; public access does not grant redistribution rights. This independently curated catalog is not endorsed by the listed authors or institutions.</p>
   <p><a href="catalog.json">View public catalog data (JSON)</a></p>
  </section>
