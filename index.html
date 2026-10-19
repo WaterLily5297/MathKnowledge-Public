@@ -10,12 +10,12 @@
 <meta property="og:site_name" content="Formosa Mathematics Reading Room">
 <meta property="og:title" content="Formosa &middot; Mathematics Reading Room">
 <meta property="og:description" content="Books, lecture notes, papers and errata in mathematics, sorted by subject, with links to the original sources. English and Japanese interface.">
-<meta property="og:url" content="https://hellnish.github.io/MathKnowledge-Public/">
+<meta property="og:url" content="https://waterlily5297.github.io/MathKnowledge-Public/">
 <meta property="og:locale" content="en_US">
 <meta property="og:locale:alternate" content="ja_JP">
 <meta name="twitter:card" content="summary">
-<link rel="alternate" hreflang="en" href="https://hellnish.github.io/MathKnowledge-Public/?lang=en">
-<link rel="alternate" hreflang="ja" href="https://hellnish.github.io/MathKnowledge-Public/?lang=ja">
+<link rel="alternate" hreflang="en" href="https://waterlily5297.github.io/MathKnowledge-Public/?lang=en">
+<link rel="alternate" hreflang="ja" href="https://waterlily5297.github.io/MathKnowledge-Public/?lang=ja">
 <title>Formosa &middot; Mathematics Reading Room</title>
 <link rel="stylesheet" href="style.css">
 <script src="katex.min.js" defer></script>
@@ -56,7 +56,8 @@
  <section id="catalog" data-view="catalog" aria-labelledby="catalog-title" hidden>
   <div class="section-heading"><h1 id="catalog-title" tabindex="-1" data-i18n="catalog.title">Resource catalog</h1><span class="subtle" data-i18n="catalog.subtitle">Titles, authors and original sources</span></div>
   <form id="filters" role="search"><label class="sr-only" for="query" data-i18n="catalog.search.label">Search the resource catalog</label><div class="search-row"><input id="query" type="search" maxlength="200" placeholder="Enter a title, author or subject" autocomplete="off" data-i18n-attr="placeholder:catalog.search.placeholder"><button type="button" id="clear" class="secondary" data-i18n="catalog.reset">Reset filters</button></div><div class="filter-row"><label><span data-i18n="catalog.subject">Subject</span><select id="subject"><option value="" data-i18n="catalog.subject.all">All subjects</option></select></label><label><span data-i18n="catalog.type">Resource type</span><select id="type"><option value="" data-i18n="catalog.type.all">All types</option></select></label><label><span data-i18n="catalog.language">Language</span><select id="language"><option value="" data-i18n="catalog.language.all">All languages</option></select></label></div></form>
-  <p id="result-count" class="result-heading" role="status" aria-live="polite" data-i18n="catalog.loading">Loading resources...</p>
+  <div class="result-row"><p id="result-count" class="result-heading" role="status" aria-live="polite" data-i18n="catalog.loading">Loading resources...</p><button id="copy-link" class="text-button" type="button" data-i18n="catalog.copy">Copy link to these results</button></div>
+  <p id="link-status" class="subtle link-status" role="status" aria-live="polite"></p>
   <div class="table-wrap"><table class="catalog-table"><thead><tr><th scope="col" data-i18n="catalog.col.title">Title and author</th><th scope="col" data-i18n="catalog.col.subject">Subject / type</th><th scope="col" data-i18n="catalog.col.year">Year / language</th><th scope="col" class="source-column" data-i18n="catalog.col.source">Source</th></tr></thead><tbody id="results" aria-busy="true"></tbody></table></div>
   <div class="pagination"><button id="previous" class="secondary" type="button" disabled data-i18n="catalog.previous">Previous</button><span id="page-label"></span><button id="next" class="secondary" type="button" disabled data-i18n="catalog.next">Next</button></div>
  </section>
@@ -64,6 +65,7 @@
   <h1 id="about-title" data-i18n="about.title">About the public edition</h1><p class="lead" data-i18n="about.lead">A reading gateway to mathematics resources.</p>
   <h2 data-i18n="about.sync.title">Catalog and synchronization</h2><p data-i18n="about.sync.text">The public catalog is built from local bibliographic records using the same classification rules. Each publication updates the existing pages and catalog in place. The date in the masthead identifies the latest catalog update.</p>
   <h2 data-i18n="about.scope.title">Public scope</h2><p data-i18n="about.scope.text">Public entries contain titles, authors, subjects, resource types, years, languages and original sources. Personal notes, OneNote pages, local paths and local application services are excluded.</p>
+  <h2 data-i18n="about.share.title">Share a search</h2><p data-i18n="about.share.text">The address changes as you search and filter the catalog, so the link always opens the same results. Use Copy link to these results to send it to someone.</p>
   <h2 data-i18n="about.local.title">Read local PDFs</h2><p data-i18n="about.local.text">Connect your MathKnowledge folder to open matching PDFs directly on this computer. Your browser asks for read permission. If books are stored on another drive, connect their containing storage folder too. Folder access lasts for this page and can be disconnected. No PDFs or local catalog data are uploaded. Other visitors cannot read files on your computer; they can follow the public source links.</p>
   <h2 data-i18n="about.math.title">Mathematics in titles</h2><p data-i18n-html="about.math.html">Title formulas are rendered locally with KaTeX and native MathML. The original searchable title is preserved. KaTeX is distributed under its <a href="katex-LICENSE.txt">MIT license</a>.</p>
   <h2 data-i18n="about.sources.title">Sources and use</h2><p data-i18n="about.sources.text">Source links lead to authors, universities, publishers or public repositories. Check editions, errata and usage terms; public access does not grant redistribution rights. This independently curated catalog is not endorsed by the listed authors or institutions.</p>

@@ -176,3 +176,8 @@ footer p { margin:.4rem 0 0; }
  th,td { padding:.65rem .4rem; }
 }
 @media(prefers-reduced-motion:reduce) { * { scroll-behavior:auto!important;transition:none!important; } }
+.result-row { display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap; }
+.result-row .result-heading { margin-bottom:.6rem; }
+.result-row .text-button { font-size:.85rem; }
+.link-status { margin:-.3rem 0 .6rem; }
+.link-status:empty { display:none; }
