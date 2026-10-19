@@ -7,6 +7,10 @@ window.FormosaReader = (() => {
  const mathOptions = Object.freeze({output:'mathml',displayMode:false,throwOnError:true,
   trust:false,strict:'error',maxExpand:200,maxSize:10});
  function renderTitle(target, title) {
+  if (window.FormosaRichText) {
+   window.FormosaRichText.renderInline(target, title, {links:false});
+   return;
+  }
   target.replaceChildren();
   let end = 0;
   for (const match of title.matchAll(formula)) {
