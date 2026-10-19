@@ -6,7 +6,7 @@ const types = {book:'Books and lecture notes','journal-article':'Papers','journa
 const languages = {en:'English',zh:'Chinese',ja:'Japanese',fr:'French',de:'German',it:'Italian',es:'Spanish',pt:'Portuguese',ru:'Russian',und:'Unspecified',mul:'Multiple languages',la:'Latin'};
 const pageTitles = {home:'Home',catalog:'Catalog',about:'About'};
 const size = 20;
-let data, localReader, features, page = 1;
+let data, localReader, features, knowledge, page = 1;
 const element = (tag, content, className) => {
  const node = document.createElement(tag);
  if (content !== undefined) node.textContent = content;
@@ -45,15 +45,17 @@ function titleLink(row) {
  return title;
 }
 function route() {
- const requested = location.hash.slice(1);
- const view = ['home', 'catalog', 'search', 'shelf', 'paths', 'about'].includes(requested) ? requested : 'home';
+ // The knowledge desk keeps its concept after the view: #knowledge?concept=<id>.
+ const [requested, linked = ''] = location.hash.slice(1).split('?');
+ const view = ['home', 'catalog', 'search', 'shelf', 'paths', 'knowledge', 'about'].includes(requested) ? requested : 'home';
  document.querySelectorAll('[data-view]').forEach(section => { section.hidden = section.dataset.view !== view; });
  document.querySelectorAll('[data-nav]').forEach(link => {
   if (link.dataset.nav === view) link.setAttribute('aria-current', 'page');
   else link.removeAttribute('aria-current');
  });
- document.title = ({home:'Home',catalog:'Catalog',search:'Full-text search',shelf:'Bookshelf',paths:'Reading paths',about:'About'})[view] + ' - Formosa Mathematics Reading Room';
+ document.title = ({home:'Home',catalog:'Catalog',search:'Full-text search',shelf:'Bookshelf',paths:'Reading paths',knowledge:'Knowledge desk',about:'About'})[view] + ' - Formosa Mathematics Reading Room';
  if(view==='shelf'&&features)features.renderShelf();
+ if (knowledge) knowledge.show(view === 'knowledge', new URLSearchParams(linked).get('concept'));
 }
 function showCatalog() {
  if (location.hash === '#catalog') route(); else location.hash = 'catalog';
@@ -170,6 +172,10 @@ async function start() {
   data.labels = new Map(data.subjects.map(subject => [subject.id, subject.label]));
   localReader = window.FormosaReader.init(data.items, render);
   features=window.FormosaFeatures.init(data,{element,titleLink,localReader});
+  // Only the live gateway adds shared_pdfs, and only it serves the /knowledge routes.
+  knowledge = window.FormosaKnowledge.init({available:Object.hasOwn(data, 'shared_pdfs'), element,
+   details:id => features.details(id), hasBook:id => data.items.some(row => row.id === id)});
+  route();
   if(data.shared_pdfs){$('local-library').hidden=true;$('shared-banner').hidden=false;$('shared-status').textContent=Object.keys(data.shared_pdfs).length+' PDFs available for public reading and full-text search.';$('available-control').hidden=false;$('available-only').checked=true;$('live-library').hidden=true;}
   else if($('live-library').dataset.expires && Date.parse($('live-library').dataset.expires)<Date.now())$('live-library').hidden=true;
   renderMeta();
@@ -198,6 +204,7 @@ async function start() {
   $('subject-rows').replaceChildren();
   const tr = element('tr'), cell = element('td', message); cell.colSpan = 2; tr.append(cell); $('subject-rows').append(tr);
   $('results').setAttribute('aria-busy', 'false');
+  if (!knowledge) { knowledge = window.FormosaKnowledge.init({available:false, element}); route(); }
  }
 }
 initTheme();
