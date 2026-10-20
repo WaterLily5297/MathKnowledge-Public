@@ -14,7 +14,8 @@ window.FormosaKnowledge = {init(options) {
  let reviewed = new Set(), storageAvailable = true;
  try {
   const saved = JSON.parse(localStorage.getItem('formosa-reviewed-concepts-v1') || '[]');
-  if (Array.isArray(saved)) reviewed = new Set(saved.filter(id => identifier.test(id)).slice(0, 200));
+  // Match the bounded concept capacity of the offline reference index.
+  if (Array.isArray(saved)) reviewed = new Set(saved.filter(id => identifier.test(id)).slice(0, 512));
  } catch (_) { storageAvailable = false; }
  function studyProgress() {
   $('knowledge-progress').textContent = reviewed.size + ' concepts reviewed in this browser.'
