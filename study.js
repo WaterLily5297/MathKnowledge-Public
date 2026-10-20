@@ -23,6 +23,8 @@ window.FormosaStudy = {init(data, helpers) {
  function counts() {
   const path = paths.find(row => row.id === selected);
   $('study-progress').textContent = path ? progress(path) + ' of ' + path.steps.length + ' checkpoints completed' : '';
+  $('study-meter').max = path ? path.steps.length : 1;
+  $('study-meter').value = path ? progress(path) : 0;
   $('study-storage').textContent = storageAvailable ? 'Progress is saved only in this browser.' : 'Browser storage is unavailable; progress will last only for this visit.';
   $('study-summary').textContent = paths.length + ' routes · ' + paths.reduce((n, row) => n + row.steps.length, 0) + ' checkpoints · ' + completed.size + ' completed';
  }
@@ -71,8 +73,15 @@ window.FormosaStudy = {init(data, helpers) {
     const formula = el('div', undefined, 'rich-text');
     window.FormosaRichText.renderBlock(formula, '$$\n' + step.formula + '\n$$', {links:false}); card.append(formula);
    }
-   if (step.example) card.append(el('p', 'Example: ' + step.example));
-   card.append(el('p', 'Checkpoint: ' + (step.checkpoint || 'Explain the main definition and solve a representative example.'), 'study-checkpoint'));
+   if (step.example) {
+    const example = el('div', undefined, 'rich-text study-example');
+    window.FormosaRichText.renderBlock(example, step.example, {links:false});
+    card.append(el('h4', 'Example', 'knowledge-label'), example);
+   }
+   const checkpoint = el('div', undefined, 'rich-text study-checkpoint');
+   window.FormosaRichText.renderBlock(checkpoint,
+    step.checkpoint || 'Explain the main definition and solve a representative example.', {links:false});
+   card.append(el('h4', 'Check your understanding', 'knowledge-label'), checkpoint);
    const concepts = el('div', undefined, 'study-links');
    for (const key of step.concepts || []) if (pattern.test(key)) concepts.append(conceptLink(key));
    card.append(concepts);
@@ -84,6 +93,14 @@ window.FormosaStudy = {init(data, helpers) {
    }
    if (!readings.children.length) readings.append(el('li', 'No catalog reading is currently linked. Start with the concept notes.', 'subtle'));
    card.append(readings, check); return card;
+  }));
+  $('study-outline').replaceChildren(...path.steps.map((step, index) => {
+   const button = el('button', (index + 1) + '. ' + step.title, 'text-button'); button.type = 'button';
+   button.addEventListener('click', () => {
+    const card = $('study-step-' + step.id);
+    card.focus({preventScroll:true}); card.scrollIntoView({block:'start', behavior:'smooth'});
+   });
+   return button;
   }));
   counts();
   if (visible) {
@@ -110,6 +127,9 @@ window.FormosaStudy = {init(data, helpers) {
  if (paths.length) choose(paths[0].id);
  return {show(active, linked) {
   visible = active;
+  if (active && paths.some(row => row.id === linked) && !filtered().some(row => row.id === linked)) {
+   $('study-query').value = ''; $('study-subject').value = ''; $('study-level').value = '';
+  }
   if (active && paths.length) choose(paths.some(row => row.id === linked) ? linked : selected || paths[0].id);
  }};
 }};

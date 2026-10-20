@@ -10,7 +10,7 @@ window.FormosaKnowledge = {init(options) {
  const identifier = /^[a-z][a-z0-9-]{0,79}$/, bookIdentifier = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,199}$/;
  const narrow = window.matchMedia ? window.matchMedia('(max-width: 900px)') : {matches:false};
  let subjects = new Map(), rows = [], selected = '', trail = [], listRequest = 0, detailRequest = 0;
- let started = false, visible = false, timer = 0;
+ let started = false, visible = false, timer = 0, booksSnapshot = null;
  let reviewed = new Set(), storageAvailable = true;
  try {
   const saved = JSON.parse(localStorage.getItem('formosa-reviewed-concepts-v1') || '[]');
@@ -80,6 +80,7 @@ window.FormosaKnowledge = {init(options) {
  }
  function clearDetail(title, note) {
   ++detailRequest;
+  booksSnapshot = null;
   $('knowledge-detail').setAttribute('aria-busy', 'false');
   $('knowledge-detail-subject').textContent = t('knowledge.note', 'Reference note');
   $('knowledge-detail-title').textContent = title;
@@ -150,12 +151,33 @@ window.FormosaKnowledge = {init(options) {
    $('knowledge-paths').append(link);
   }
   if (!$('knowledge-paths').children.length) $('knowledge-paths').append(el('span', 'Explore Reading paths to choose a related subject.', 'subtle'));
-  const books = row.books.map(book => bookEntry(book, row.title)).filter(Boolean);
-  $('knowledge-books').replaceChildren(...books);
-  if (!books.length) $('knowledge-books').append(el('li', t('knowledge.noBooks', 'No PDF linked to this concept is shared right now.'), 'subtle'));
+  drawBooks(row);
   const source = sourceUrl(row.source && row.source.url);
   $('knowledge-source').hidden = !source;
   if (source) $('knowledge-source').href = source;
+ }
+ function drawBooks(row) {
+  const snapshot = JSON.stringify(row.books);
+  if (snapshot === booksSnapshot) return;
+  booksSnapshot = snapshot;
+  const books = row.books.map(book => bookEntry(book, row.title)).filter(Boolean);
+  $('knowledge-books').replaceChildren(...books);
+  if (!books.length) $('knowledge-books').append(el('li', t('knowledge.noBooks', 'No PDF linked to this concept is shared right now.'), 'subtle'));
+ }
+ async function refreshBooks() {
+  if (!selected || $('knowledge-detail').getAttribute('aria-busy') === 'true') return;
+  const id = selected, current = ++detailRequest;
+  try {
+   const result = await json('knowledge/concepts/' + encodeURIComponent(id));
+   if (current !== detailRequest) return;
+   if (!result) { clearDetail(t('knowledge.gone', 'Concept unavailable')); return; }
+   // Keep the reading panel and focused controls intact when only sharing changes.
+   drawBooks(result.concept); showError('');
+  } catch (failure) {
+   if (current !== detailRequest) return;
+   booksSnapshot = null; $('knowledge-books').replaceChildren();
+   showError(failure.message);
+  }
  }
  // Every selection fetches the concept again, so a withdrawn PDF disappears at once.
  async function choose(id, {from = '', focus = false} = {}) {
@@ -272,6 +294,12 @@ window.FormosaKnowledge = {init(options) {
  studyProgress();
  $('knowledge-reset').addEventListener('click', () => { $('knowledge-query').value = ''; $('knowledge-subject').value = ''; $('knowledge-state').value = ''; load({keep:false}); $('knowledge-query').focus(); });
  $('knowledge-empty-reset').addEventListener('click', () => $('knowledge-reset').click());
+ $('knowledge-to-index').addEventListener('click', () => {
+  const button = [...$('knowledge-list').querySelectorAll('.concept-row')]
+   .find(row => row.dataset.concept === selected);
+  (button || $('knowledge-query')).focus({preventScroll:true});
+  $('knowledge-list').scrollIntoView({block:'start', behavior:'smooth'});
+ });
  $('knowledge-retry').addEventListener('click', () => load());
  document.addEventListener('visibilitychange', () => { if (visible && !document.hidden) load(); });
 
@@ -294,6 +322,8 @@ window.FormosaKnowledge = {init(options) {
   if (linked && identifier.test(linked)) {
    if (linked !== selected) trail = [];
    selected = linked;
+   // A link from a route or another page must not be replaced by a filtered result.
+   $('knowledge-query').value = ''; $('knowledge-subject').value = ''; $('knowledge-state').value = '';
   }
   if (!started) { started = true; loadSource(); }
   // Restore the list as well as the detail after a failed initial or filtered load.
@@ -301,7 +331,7 @@ window.FormosaKnowledge = {init(options) {
   // Sharing can change while the desk stays open; check the current concept each minute.
   timer = setInterval(() => {
    if (document.hidden || $('knowledge-list').getAttribute('aria-busy') === 'true') return;
-   if (rows.length && selected) choose(selected, {from:null});
+   if (rows.length && selected) refreshBooks();
    else load();
   }, 60000);
  }
