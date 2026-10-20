@@ -178,6 +178,9 @@ async function start() {
   // Only the live gateway adds shared_pdfs, and only it serves the /knowledge routes.
   knowledge = window.FormosaKnowledge.init({available:Object.hasOwn(data, 'shared_pdfs'), element,
    details:id => features.details(id), hasBook:id => data.items.some(row => row.id === id), paths:data.reading_paths || []});
+  $('home-study-shortcuts').hidden = !Object.hasOwn(data, 'shared_pdfs');
+  if (data.reading_paths && data.reading_paths.length) $('home-study-summary').textContent =
+   data.reading_paths.length + ' reading routes, with concept notes and checkpoints to guide your study.';
   route();
   if(data.shared_pdfs){$('local-library').hidden=true;$('shared-banner').hidden=false;$('shared-status').textContent=Object.keys(data.shared_pdfs).length+' PDFs available for public reading and full-text search.';$('available-control').hidden=false;$('available-only').checked=true;$('live-library').hidden=true;}
   else if($('live-library').dataset.expires && Date.parse($('live-library').dataset.expires)<Date.now())$('live-library').hidden=true;
