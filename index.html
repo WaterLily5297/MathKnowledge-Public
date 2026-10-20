@@ -15,22 +15,23 @@
 <meta name="twitter:card" content="summary">
 <link rel="alternate" hreflang="en" href="https://waterlily5297.github.io/MathKnowledge-Public/">
 <title>Formosa &middot; Mathematics Reading Room</title>
-<link rel="stylesheet" href="style.css">
-<script src="katex.min.js" defer></script>
-<script src="markdown-it.min.js" defer></script>
-<script src="rich-text.js" defer></script>
-<script src="i18n.js" defer></script>
-<script src="reader.js" defer></script>
-<script src="features.js" defer></script>
-<script src="knowledge.js" defer></script>
-<script src="app.js" defer></script>
+<link rel="stylesheet" href="style.css?v=aa077a1186ed">
+<script src="katex.min.js?v=103a53763cc0" defer></script>
+<script src="markdown-it.min.js?v=38c70a1e7ca9" defer></script>
+<script src="rich-text.js?v=d330d853b1bc" defer></script>
+<script src="i18n.js?v=a6c7229bf2bf" defer></script>
+<script src="reader.js?v=12846324f2d1" defer></script>
+<script src="features.js?v=f04f2726a961" defer></script>
+<script src="study.js?v=5cbcc812d271" defer></script>
+<script src="knowledge.js?v=748a24cde471" defer></script>
+<script src="app.js?v=9a71772db564" defer></script>
 </head>
 <body>
 <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
 <header class="masthead">
  <div class="masthead-row"><a class="masthead-title" href="#home">Formosa</a><span class="masthead-sub" data-i18n="masthead.sub">Mathematics Reading Room</span><p class="masthead-issue"><span data-i18n="issue.prefix">Public catalog:</span> <span id="total">&mdash;</span> <span data-i18n="issue.unit">resources</span> - <span id="updated">Updating catalog...</span></p></div>
  <div class="masthead-rule"></div>
- <div class="masthead-nav"><nav aria-label="Main navigation" data-i18n-attr="aria-label:nav.label"><a href="#home" data-nav="home" data-i18n="nav.home">Home</a><a href="#catalog" data-nav="catalog" data-kind="" data-i18n="nav.catalog">Catalog</a><a href="#catalog" data-kind="book" data-i18n="nav.books">Books and lecture notes</a><a href="#catalog" data-kind="journal-article" data-i18n="nav.papers">Papers</a><a href="#catalog" data-kind="errata" data-i18n="nav.errata">Errata</a><a href="#about" data-nav="about" data-i18n="nav.about">About</a><a href="#search" data-nav="search" id="search-nav" hidden>Full-text search</a><a href="#shelf" data-nav="shelf">Bookshelf</a><a href="#paths" data-nav="paths" id="paths-nav" hidden>Reading paths</a><a href="#knowledge" data-nav="knowledge" id="knowledge-nav" hidden>Knowledge desk</a><a id="live-library" href="https://c3297295803fa9.lhr.life/#catalog" data-expires="2026-10-20T02:58:11.593324+00:00" target="_blank" rel="noopener noreferrer">Read PDFs ↗</a></nav>
+ <div class="masthead-nav"><nav aria-label="Main navigation" data-i18n-attr="aria-label:nav.label"><a href="#home" data-nav="home" data-i18n="nav.home">Home</a><a href="#catalog" data-nav="catalog" data-kind="" data-i18n="nav.catalog">Catalog</a><a href="#catalog" data-kind="book" data-i18n="nav.books">Books and lecture notes</a><a href="#catalog" data-kind="journal-article" data-i18n="nav.papers">Papers</a><a href="#catalog" data-kind="errata" data-i18n="nav.errata">Errata</a><a href="#about" data-nav="about" data-i18n="nav.about">About</a><a href="#search" data-nav="search" id="search-nav" hidden>Full-text search</a><a href="#shelf" data-nav="shelf">Bookshelf</a><a href="#paths" data-nav="paths" id="paths-nav" hidden>Reading paths</a><a href="#knowledge" data-nav="knowledge" id="knowledge-nav" hidden>Knowledge desk</a><a id="live-library" href="https://a73d606fbcd658.lhr.life/#catalog" data-expires="2026-10-20T11:54:05.858625+00:00" target="_blank" rel="noopener noreferrer">Read PDFs ↗</a></nav>
  <div class="masthead-controls">
   <label class="theme-control"><span class="sr-only" data-i18n="theme.label">Reading theme</span><select id="theme" aria-label="Reading theme" data-i18n-attr="aria-label:theme.label"><option value="system" data-i18n="theme.system">System theme</option><option value="light" data-i18n="theme.light">Light</option><option value="dark" data-i18n="theme.dark">Dark</option><option value="night" data-i18n="theme.night">Warm night</option></select></label>
  </div></div>
@@ -63,9 +64,20 @@
   <div class="table-wrap"><table class="catalog-table"><thead><tr><th scope="col" data-i18n="catalog.col.title">Title and author</th><th scope="col" data-i18n="catalog.col.subject">Subject / type</th><th scope="col" data-i18n="catalog.col.year">Year / language</th><th scope="col" class="source-column" data-i18n="catalog.col.source">Source</th></tr></thead><tbody id="results" aria-busy="true"></tbody></table></div>
   <div class="pagination"><button id="previous" class="secondary" type="button" disabled data-i18n="catalog.previous">Previous</button><span id="page-label"></span><button id="next" class="secondary" type="button" disabled data-i18n="catalog.next">Next</button></div>
  </section>
- <section id="search" data-view="search" aria-labelledby="search-title" hidden><h1 id="search-title">Search inside books</h1><p>Search the text of PDFs currently shared by the owner. Page numbers refer to the PDF viewer position.</p><form id="fulltext-form"><label>Search terms<input id="fulltext-query" type="search" maxlength="200" required></label><label>Book<select id="fulltext-book"><option value="">All shared PDFs</option></select></label><button class="primary" type="submit">Search text</button></form><p id="fulltext-status" role="status" aria-live="polite"></p><div id="fulltext-results"></div></section>
+ <section id="search" data-view="search" aria-labelledby="search-title" hidden><h1 id="search-title">Search inside books</h1><p>Search the text of PDFs currently shared by the owner. Page numbers refer to the PDF viewer position.</p><p id="fulltext-public-notice" class="knowledge-static" hidden>The text index runs on the live public library. Submitting this form opens that library with your query; this static catalog does not contact private local services.</p><form id="fulltext-form"><label>Search terms<input id="fulltext-query" type="search" maxlength="200" required></label><label>Book<select id="fulltext-book"><option value="">All shared PDFs</option></select></label><button class="primary" type="submit">Search text</button></form><p id="fulltext-status" role="status" aria-live="polite"></p><div id="fulltext-results"></div></section>
  <section id="shelf" data-view="shelf" aria-labelledby="shelf-title" hidden><h1 id="shelf-title">My bookshelf</h1><p>Saved books and reading progress stay in this browser.</p><div id="shelf-items"></div></section>
- <section id="paths" data-view="paths" aria-labelledby="paths-title" hidden><h1 id="paths-title">Reading paths</h1><p>A suggested order from the local library. Adapt it to your background.</p><div id="reading-paths"></div></section>
+ <section id="paths" data-view="paths" aria-labelledby="paths-title" hidden>
+  <div class="section-heading"><h1 id="paths-title">Reading paths</h1><span id="study-summary" class="subtle"></span></div>
+  <p class="knowledge-intro">Move from a first definition to a working mathematical toolkit. Follow a route, read the linked books, and test your understanding at each checkpoint.</p>
+  <p id="study-static" class="knowledge-static" hidden>Study routes are available on the live library. Use the Read PDFs link to open the library computer.</p>
+  <div id="study-layout">
+   <div class="study-filters"><label>Find a route<input id="study-query" type="search" maxlength="120" placeholder="Subject, skill or topic"></label><label>Subject<select id="study-subject"><option value="">All subjects</option></select></label><label>Level<select id="study-level"><option value="">All levels</option></select></label><button id="study-reset" type="button" class="text-button">Reset</button></div>
+   <p id="study-count" role="status" aria-live="polite"></p>
+   <div class="study-grid"><aside aria-label="Study routes"><div id="study-list"></div><p id="study-empty" hidden>No routes match. Try another subject or reset the filters.</p></aside>
+    <article id="study-panel"><p id="study-meta" class="knowledge-label"></p><h2 id="study-title" tabindex="-1">Choose a route</h2><p id="study-description"></p><p id="study-progress" role="status"></p><button id="study-resume" type="button" class="primary">Continue with the next checkpoint</button><p id="study-storage" class="subtle"></p><h3 class="knowledge-label">Before you begin</h3><div id="study-prerequisites" class="study-links"></div><div id="study-steps"></div></article>
+   </div>
+  </div>
+ </section>
  <section id="knowledge" data-view="knowledge" aria-labelledby="knowledge-title" hidden>
   <div class="section-heading"><h1 id="knowledge-title" tabindex="-1">Knowledge desk</h1><span class="subtle">Concepts, prerequisites and the books behind them</span></div>
   <p class="knowledge-intro">Move from a definition to the ideas it rests on, then open a shared PDF to read it in the original.</p>
@@ -77,7 +89,7 @@
    </section>
    <form id="knowledge-form" class="knowledge-form" role="search">
     <div class="search-row"><label class="sr-only" for="knowledge-query">Find a concept</label><input id="knowledge-query" type="search" maxlength="120" autocomplete="off" placeholder="Find a concept, e.g. Banach"><button class="primary" type="submit">Search</button></div>
-    <div class="filter-row"><label><span>Subject</span><select id="knowledge-subject"><option value="">All subjects</option></select></label><button type="button" id="knowledge-reset" class="text-button">Reset</button><p id="knowledge-count" class="result-heading" role="status" aria-live="polite">Loading concepts...</p></div>
+    <div class="filter-row"><label><span>Subject</span><select id="knowledge-subject"><option value="">All subjects</option></select></label><label><span>Study status</span><select id="knowledge-state"><option value="">All concepts</option><option value="new">Not reviewed</option><option value="reviewed">Reviewed</option></select></label><button type="button" id="knowledge-reset" class="text-button">Reset</button><p id="knowledge-count" class="result-heading" role="status" aria-live="polite">Loading concepts...</p></div><p id="knowledge-progress" class="subtle" role="status"></p>
    </form>
    <div id="knowledge-error" class="knowledge-error" role="alert" hidden><p id="knowledge-error-text"></p><button type="button" id="knowledge-retry" class="secondary">Try again</button></div>
    <div class="knowledge-grid">
@@ -90,10 +102,13 @@
      <div class="knowledge-topline"><span id="knowledge-detail-subject">Reference note</span><span>Formosa summary</span></div>
      <p id="knowledge-trail" class="knowledge-trail" hidden></p>
      <h2 id="knowledge-detail-title" tabindex="-1">Choose a concept</h2>
+     <button id="knowledge-reviewed" type="button" class="text-button" hidden>Mark as reviewed</button>
      <div id="knowledge-summary" class="rich-text knowledge-summary"></div>
      <div id="knowledge-formula" class="rich-text knowledge-formula" hidden></div>
      <div id="knowledge-detail-sections" hidden>
       <h3 class="knowledge-label">Read these first</h3><ul id="knowledge-prerequisites" class="knowledge-prerequisites"></ul>
+      <h3 class="knowledge-label">What this unlocks</h3><ul id="knowledge-next" class="knowledge-prerequisites"></ul>
+      <h3 class="knowledge-label">Study routes</h3><div id="knowledge-paths" class="study-links"></div>
       <h3 class="knowledge-label">Shared PDFs on this concept</h3><ul id="knowledge-books" class="knowledge-books"></ul>
       <div class="knowledge-footnote"><p>This summary was written by Formosa. The source link opens a Banana Space search for the term; it is not a checked citation of a particular article.</p><a id="knowledge-source" target="_blank" rel="noopener noreferrer" hidden>Search Banana Space ↗</a></div>
      </div>

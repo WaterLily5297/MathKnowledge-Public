@@ -11,6 +11,17 @@ window.FormosaKnowledge = {init(options) {
  const narrow = window.matchMedia ? window.matchMedia('(max-width: 900px)') : {matches:false};
  let subjects = new Map(), rows = [], selected = '', trail = [], listRequest = 0, detailRequest = 0;
  let started = false, visible = false, timer = 0;
+ let reviewed = new Set(), storageAvailable = true;
+ try {
+  const saved = JSON.parse(localStorage.getItem('formosa-reviewed-concepts-v1') || '[]');
+  if (Array.isArray(saved)) reviewed = new Set(saved.filter(id => identifier.test(id)).slice(0, 200));
+ } catch (_) { storageAvailable = false; }
+ function studyProgress() {
+  $('knowledge-progress').textContent = reviewed.size + ' concepts reviewed in this browser.'
+   + (storageAvailable ? '' : ' Browser storage is unavailable; changes last only for this visit.');
+  $('knowledge-reviewed').textContent = reviewed.has(selected) ? 'Mark as not reviewed' : 'Mark as reviewed';
+  $('knowledge-reviewed').setAttribute('aria-pressed', String(reviewed.has(selected)));
+ }
 
  class Unavailable extends Error {}
  async function json(path) {
@@ -49,7 +60,8 @@ window.FormosaKnowledge = {init(options) {
    inline(title, row.title);
    // The first paragraph is enough to recognise a concept in the list.
    inline(preview, row.summary_md.split(/\n\s*\n/)[0]);
-   button.append(el('span', subjectLabel(row.subject), 'concept-subject'), title, preview);
+   button.append(el('span', subjectLabel(row.subject), 'concept-subject'), title, preview,
+    el('span', reviewed.has(row.id) ? 'Reviewed' : 'Not reviewed', 'concept-study-state'));
    button.addEventListener('click', () => choose(row.id, {from:''}));
    button.addEventListener('keydown', event => {
     if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
@@ -75,8 +87,9 @@ window.FormosaKnowledge = {init(options) {
    $(id).replaceChildren();
   $('knowledge-formula').hidden = true; $('knowledge-trail').hidden = true;
   $('knowledge-detail-sections').hidden = true;
+  $('knowledge-reviewed').hidden = true;
  }
- function bookEntry(book) {
+ function bookEntry(book, conceptTitle) {
   const item = el('li', undefined, 'knowledge-book');
   if (!bookIdentifier.test(book.id) || book.read_url !== '/read/' + book.id) return null;
   const link = el('a', undefined, 'knowledge-book-title');
@@ -92,6 +105,8 @@ window.FormosaKnowledge = {init(options) {
    details.addEventListener('click', () => options.details(book.id));
    actions.append(details);
   }
+  const search = el('a', 'Search inside this book');
+  search.href = '#search?' + new URLSearchParams({query:conceptTitle, book:book.id}); actions.append(search);
   item.append(actions);
   return item;
  }
@@ -102,6 +117,7 @@ window.FormosaKnowledge = {init(options) {
   $('knowledge-formula').hidden = !row.formula;
   if (row.formula) block($('knowledge-formula'), '$$\n' + row.formula + '\n$$');
   $('knowledge-detail-sections').hidden = false;
+  $('knowledge-reviewed').hidden = false; studyProgress();
   const back = trail[trail.length - 1];
   $('knowledge-trail').hidden = !back;
   if (back) {
@@ -119,7 +135,21 @@ window.FormosaKnowledge = {init(options) {
   });
   $('knowledge-prerequisites').replaceChildren(...prerequisites);
   if (!prerequisites.length) $('knowledge-prerequisites').append(el('li', t('knowledge.noPrerequisites', 'No listed prerequisites. A good place to start.'), 'subtle'));
-  const books = row.books.map(bookEntry).filter(Boolean);
+  const next = (row.next_concepts || []).filter(item => identifier.test(item.id)).map(item => {
+   const button = el('button', item.title + ' →', 'prerequisite'); button.type = 'button';
+   button.addEventListener('click', () => choose(item.id, {from:row, focus:true}));
+   const itemNode = el('li'); itemNode.append(button); return itemNode;
+  });
+  $('knowledge-next').replaceChildren(...next);
+  if (!next.length) $('knowledge-next').append(el('li', 'No further concepts are linked in this reference set.', 'subtle'));
+  $('knowledge-paths').replaceChildren();
+  for (const path of options.paths || []) if (identifier.test(path.id)
+      && path.steps.some(step => (step.concepts || []).includes(row.id))) {
+   const link = el('a', path.title); link.href = '#paths?' + new URLSearchParams({path:path.id});
+   $('knowledge-paths').append(link);
+  }
+  if (!$('knowledge-paths').children.length) $('knowledge-paths').append(el('span', 'Explore Reading paths to choose a related subject.', 'subtle'));
+  const books = row.books.map(book => bookEntry(book, row.title)).filter(Boolean);
   $('knowledge-books').replaceChildren(...books);
   if (!books.length) $('knowledge-books').append(el('li', t('knowledge.noBooks', 'No PDF linked to this concept is shared right now.'), 'subtle'));
   const source = sourceUrl(row.source && row.source.url);
@@ -182,7 +212,9 @@ window.FormosaKnowledge = {init(options) {
     subjects.set(item.id, item.label);
     const option = el('option', item.label); option.value = item.id; $('knowledge-subject').append(option);
    }
-   rows = result.concepts.filter(row => identifier.test(row.id));
+   const state = $('knowledge-state').value;
+   rows = result.concepts.filter(row => identifier.test(row.id)
+    && (!state || (state === 'reviewed' ? reviewed.has(row.id) : !reviewed.has(row.id))));
    $('knowledge-count').textContent = t('knowledge.count', rows.length === 1 ? '{n} concept' : '{n} concepts', {n:rows.length});
    $('knowledge-empty').hidden = rows.length > 0;
    if (!rows.length) $('knowledge-empty-text').textContent = query
@@ -227,7 +259,17 @@ window.FormosaKnowledge = {init(options) {
  $('knowledge-form').addEventListener('submit', event => { event.preventDefault(); clearTimeout(typing); load({keep:false}); });
  $('knowledge-query').addEventListener('input', () => { clearTimeout(typing); typing = setTimeout(() => load({keep:false}), 250); });
  $('knowledge-subject').addEventListener('change', () => load({keep:false}));
- $('knowledge-reset').addEventListener('click', () => { $('knowledge-query').value = ''; $('knowledge-subject').value = ''; load({keep:false}); $('knowledge-query').focus(); });
+ $('knowledge-state').addEventListener('change', () => load({keep:false}));
+ $('knowledge-reviewed').addEventListener('click', () => {
+  if (!identifier.test(selected)) return;
+  if (reviewed.has(selected)) reviewed.delete(selected); else reviewed.add(selected);
+  try { localStorage.setItem('formosa-reviewed-concepts-v1', JSON.stringify([...reviewed])); }
+  catch (_) { storageAvailable = false; }
+  studyProgress();
+  if ($('knowledge-state').value) load(); else drawList();
+ });
+ studyProgress();
+ $('knowledge-reset').addEventListener('click', () => { $('knowledge-query').value = ''; $('knowledge-subject').value = ''; $('knowledge-state').value = ''; load({keep:false}); $('knowledge-query').focus(); });
  $('knowledge-empty-reset').addEventListener('click', () => $('knowledge-reset').click());
  $('knowledge-retry').addEventListener('click', () => load());
  document.addEventListener('visibilitychange', () => { if (visible && !document.hidden) load(); });

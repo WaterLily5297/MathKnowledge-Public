@@ -6,7 +6,7 @@ const types = {book:'Books and lecture notes','journal-article':'Papers','journa
 const languages = {en:'English',zh:'Chinese',ja:'Japanese',fr:'French',de:'German',it:'Italian',es:'Spanish',pt:'Portuguese',ru:'Russian',und:'Unspecified',mul:'Multiple languages',la:'Latin'};
 const pageTitles = {home:'Home',catalog:'Catalog',about:'About'};
 const size = 20;
-let data, localReader, features, knowledge, page = 1;
+let data, localReader, features, knowledge, study, page = 1;
 const element = (tag, content, className) => {
  const node = document.createElement(tag);
  if (content !== undefined) node.textContent = content;
@@ -55,6 +55,8 @@ function route() {
  });
  document.title = ({home:'Home',catalog:'Catalog',search:'Full-text search',shelf:'Bookshelf',paths:'Reading paths',knowledge:'Knowledge desk',about:'About'})[view] + ' - Formosa Mathematics Reading Room';
  if(view==='shelf'&&features)features.renderShelf();
+ if (features) features.showSearch(view === 'search', new URLSearchParams(linked));
+ if (study) study.show(view === 'paths', new URLSearchParams(linked).get('path'));
  if (knowledge) knowledge.show(view === 'knowledge', new URLSearchParams(linked).get('concept'));
 }
 function showCatalog() {
@@ -172,9 +174,10 @@ async function start() {
   data.labels = new Map(data.subjects.map(subject => [subject.id, subject.label]));
   localReader = window.FormosaReader.init(data.items, render);
   features=window.FormosaFeatures.init(data,{element,titleLink,localReader});
+  study=window.FormosaStudy.init(data,{element,titleLink,details:id=>features.details(id)});
   // Only the live gateway adds shared_pdfs, and only it serves the /knowledge routes.
   knowledge = window.FormosaKnowledge.init({available:Object.hasOwn(data, 'shared_pdfs'), element,
-   details:id => features.details(id), hasBook:id => data.items.some(row => row.id === id)});
+   details:id => features.details(id), hasBook:id => data.items.some(row => row.id === id), paths:data.reading_paths || []});
   route();
   if(data.shared_pdfs){$('local-library').hidden=true;$('shared-banner').hidden=false;$('shared-status').textContent=Object.keys(data.shared_pdfs).length+' PDFs available for public reading and full-text search.';$('available-control').hidden=false;$('available-only').checked=true;$('live-library').hidden=true;}
   else if($('live-library').dataset.expires && Date.parse($('live-library').dataset.expires)<Date.now())$('live-library').hidden=true;
