@@ -5,8 +5,8 @@ window.FormosaFeatures={init(data,helpers){
  try{const saved=JSON.parse(localStorage.getItem('formosa-public-shelf')||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved))shelf=Object.assign(Object.create(null),saved);}catch(_){}
  const rich=(tag,text,className,block=false)=>{const node=el(tag,undefined,className);window.FormosaRichText[block?'renderBlock':'renderInline'](node,text);return node;};
  const persist=()=>{try{localStorage.setItem('formosa-public-shelf',JSON.stringify(shelf));}catch(_){}};
- function original(id,page=1){const row=books.get(id);if(!row)return el('span','Unavailable');
-  const link=el('a',shared[id]?'Read PDF ↗':'Original source ↗');link.href=shared[id]?'read/'+encodeURIComponent(id)+'#page='+page:row.source;link.target='_blank';link.rel='noopener noreferrer';return link;}
+ function original(id,page=1,label){const row=books.get(id);if(!row)return el('span','Unavailable');
+  const link=el('a',shared[id]?(label||'Read PDF ↗'):'Original source ↗');link.href=shared[id]?'read/'+encodeURIComponent(id)+'#page='+page:row.source;link.target='_blank';link.rel='noopener noreferrer';return link;}
  function show(){if(!dialog.open)dialog.showModal();}
  function details(id){const row=books.get(id);if(!row)return;++detailRequest;const body=$('book-detail');body.replaceChildren();
   const title=el('h2');window.FormosaReader.renderTitle(title,row.title);body.append(title,rich('p',row.authors),el('p',[row.year,row.language,...row.subjects.map(id=>data.labels.get(id)||id)].filter(Boolean).join(' / ')));
@@ -58,18 +58,25 @@ window.FormosaFeatures={init(data,helpers){
  let request=0,lastLinked='';async function search(event){
   event.preventDefault();
   const current=++request,query=$('fulltext-query').value.trim();
-  $('fulltext-results').replaceChildren();
+  $('fulltext-results').replaceChildren();busy(false);
   if(!query){$('fulltext-status').textContent='Enter search terms to search shared PDFs.';return;}
   const params=new URLSearchParams({query});if($('fulltext-book').value)params.set('book',$('fulltext-book').value);
   if(query.length>200){$('fulltext-status').textContent='Use at most 200 characters in a search.';return;}
+  // A link with the same query and book must run again after a different manual search.
+  lastLinked=params.toString();
   if(!active){liveSearch(params);return;}
-  $('fulltext-status').textContent='Searching shared PDFs...';
+  $('fulltext-status').textContent='Searching shared PDFs...';busy(true);
   try{const url=new URL(location.href);url.hash='search?'+params;history.replaceState(history.state,'',url);}catch(_){}
   try{const response=await fetch('search?'+params,{cache:'no-store'});if(!response.ok)throw Error();const result=await response.json();if(current!==request)return;$('fulltext-results').replaceChildren();
    if(result.shared_pdfs){for(const key of Object.keys(shared))delete shared[key];Object.assign(shared,result.shared_pdfs);}
-   for(const hit of result.results){if(!books.has(hit.book)||!shared[hit.book])continue;const row=books.get(hit.book),card=el('article');card.append(helpers.titleLink(row),el('p',row.authors+' - PDF page '+hit.page),rich('blockquote',hit.excerpt,'rich-text',true),original(hit.book,hit.page));const page=el('button','Read page text','secondary');page.addEventListener('click',()=>readPage(hit.book,hit.page));card.append(page);$('fulltext-results').append(card);}
-   $('fulltext-status').textContent=$('fulltext-results').children.length+' matching page results. Only currently shared PDFs are searched.';
-  }catch(_){if(current===request){$('fulltext-results').replaceChildren();$('fulltext-status').textContent='Search is temporarily unavailable. The owner must keep the library and index online.';}}}
+   for(const hit of result.results){if(!books.has(hit.book)||!shared[hit.book])continue;const row=books.get(hit.book),card=el('article');card.append(helpers.titleLink(row),el('p',row.authors+' - PDF page '+hit.page),rich('blockquote',hit.excerpt,'rich-text',true),original(hit.book,hit.page,'Open PDF at page '+hit.page+' ↗'));const page=el('button','Read page text','secondary');page.addEventListener('click',()=>readPage(hit.book,hit.page));card.append(page);$('fulltext-results').append(card);}
+   const found=$('fulltext-results').children.length;
+   $('fulltext-status').textContent=found?(found===1?'1 matching page. ':found+' matching pages. ')+'Only currently shared PDFs are searched.'
+    :'No pages matched "'+query+'". Try fewer or different words'+(params.has('book')?', or search all shared PDFs.':'.');
+  }catch(_){if(current===request){$('fulltext-results').replaceChildren();$('fulltext-status').textContent='Search is temporarily unavailable. The owner must keep the library and index online.';}}
+  finally{if(current===request)busy(false);}}
+ // A newer search may start at any time; older answers are dropped by their request number.
+ function busy(on){$('fulltext-results').setAttribute('aria-busy',String(on));$('fulltext-submit').setAttribute('aria-busy',String(on));}
  $('fulltext-form').addEventListener('submit',search);
  const paths=Array.isArray(data.reading_paths)?data.reading_paths:[];$('paths-nav').hidden=!paths.length;
  renderShelf();return{details,renderShelf,showSearch(visible,params){
@@ -82,7 +89,7 @@ window.FormosaFeatures={init(data,helpers){
    ++request;$('fulltext-results').replaceChildren();
    $('fulltext-status').textContent='This book is not currently shared. Choose another book to search.';return;
   }
-  if(!active&&book){const option=el('option',books.get(book).title);option.value=book;$('fulltext-book').append(option);}
+  if(!active&&book&&![...$('fulltext-book').children].some(option=>option.value===book)){const option=el('option',books.get(book).title);option.value=book;$('fulltext-book').append(option);}
   $('fulltext-book').value=book;
   if(active)search({preventDefault(){}});
  }};

@@ -9,7 +9,7 @@ window.FormosaKnowledge = {init(options) {
  const rich = window.FormosaRichText;
  const identifier = /^[a-z][a-z0-9-]{0,79}$/, bookIdentifier = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,199}$/;
  const narrow = window.matchMedia ? window.matchMedia('(max-width: 900px)') : {matches:false};
- let subjects = new Map(), rows = [], selected = '', trail = [], listRequest = 0, detailRequest = 0;
+ let subjects = new Map(), fetched = [], rows = [], selected = '', trail = [], listRequest = 0, detailRequest = 0;
  let started = false, visible = false, timer = 0;
  let reviewed = new Set(), storageAvailable = true;
  try {
@@ -60,13 +60,12 @@ window.FormosaKnowledge = {init(options) {
    inline(title, row.title);
    // The first paragraph is enough to recognise a concept in the list.
    inline(preview, row.summary_md.split(/\n\s*\n/)[0]);
-   button.append(el('span', subjectLabel(row.subject), 'concept-subject'), title, preview,
-    el('span', reviewed.has(row.id) ? 'Reviewed' : 'Not reviewed', 'concept-study-state'));
+   button.append(el('span', subjectLabel(row.subject), 'concept-subject'), title, preview);
+   if (reviewed.has(row.id)) button.append(el('span', 'Reviewed', 'concept-study-state'));
    button.addEventListener('click', () => choose(row.id, {from:''}));
    button.addEventListener('keydown', event => {
-    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
-    const all = [...$('knowledge-list').querySelectorAll('.concept-row')];
-    const next = all[all.indexOf(button) + (event.key === 'ArrowDown' ? 1 : -1)];
+    const all = [...$('knowledge-list').querySelectorAll('.concept-row')], index = all.indexOf(button);
+    const next = {ArrowDown:all[index + 1], ArrowUp:all[index - 1], Home:all[0], End:all[all.length - 1]}[event.key];
     if (next) { event.preventDefault(); next.focus(); }
    });
    return button;
@@ -83,7 +82,7 @@ window.FormosaKnowledge = {init(options) {
   $('knowledge-detail-subject').textContent = t('knowledge.note', 'Reference note');
   $('knowledge-detail-title').textContent = title;
   $('knowledge-summary').replaceChildren(); if (note) $('knowledge-summary').append(el('p', note, 'subtle'));
-  for (const id of ['knowledge-formula', 'knowledge-prerequisites', 'knowledge-books', 'knowledge-trail'])
+  for (const id of ['knowledge-formula', 'knowledge-sections', 'knowledge-prerequisites', 'knowledge-next', 'knowledge-paths', 'knowledge-books', 'knowledge-trail'])
    $(id).replaceChildren();
   $('knowledge-formula').hidden = true; $('knowledge-trail').hidden = true;
   $('knowledge-detail-sections').hidden = true;
@@ -110,10 +109,18 @@ window.FormosaKnowledge = {init(options) {
   item.append(actions);
   return item;
  }
+ function drawBooks(row) {
+  const books = row.books.map(book => bookEntry(book, row.title)).filter(Boolean);
+  $('knowledge-books').replaceChildren(...books);
+  if (!books.length) $('knowledge-books').append(el('li', t('knowledge.noBooks', 'No PDF linked to this concept is shared right now.'), 'subtle'));
+ }
  function drawDetail(row) {
   $('knowledge-detail-subject').textContent = subjectLabel(row.subject);
   inline($('knowledge-detail-title'), row.title);
-  block($('knowledge-summary'), row.summary_md);
+  // The definition comes first and its formula right after it; examples and checks follow.
+  const split = row.summary_md.search(/\n#{2,4} /);
+  block($('knowledge-summary'), split < 0 ? row.summary_md : row.summary_md.slice(0, split).trimEnd());
+  block($('knowledge-sections'), split < 0 ? '' : row.summary_md.slice(split + 1));
   $('knowledge-formula').hidden = !row.formula;
   if (row.formula) block($('knowledge-formula'), '$$\n' + row.formula + '\n$$');
   $('knowledge-detail-sections').hidden = false;
@@ -136,22 +143,28 @@ window.FormosaKnowledge = {init(options) {
   $('knowledge-prerequisites').replaceChildren(...prerequisites);
   if (!prerequisites.length) $('knowledge-prerequisites').append(el('li', t('knowledge.noPrerequisites', 'No listed prerequisites. A good place to start.'), 'subtle'));
   const next = (row.next_concepts || []).filter(item => identifier.test(item.id)).map(item => {
-   const button = el('button', item.title + ' →', 'prerequisite'); button.type = 'button';
+   const button = el('button', undefined, 'prerequisite'); button.type = 'button';
+   const name = el('span'); inline(name, item.title); button.append(name, el('span', ' →', 'arrow'));
    button.addEventListener('click', () => choose(item.id, {from:row, focus:true}));
    const itemNode = el('li'); itemNode.append(button); return itemNode;
   });
   $('knowledge-next').replaceChildren(...next);
   if (!next.length) $('knowledge-next').append(el('li', 'No further concepts are linked in this reference set.', 'subtle'));
   $('knowledge-paths').replaceChildren();
-  for (const path of options.paths || []) if (identifier.test(path.id)
-      && path.steps.some(step => (step.concepts || []).includes(row.id))) {
-   const link = el('a', path.title); link.href = '#paths?' + new URLSearchParams({path:path.id});
+  for (const path of options.paths || []) {
+   if (!identifier.test(path.id)) continue;
+   // Prefer the checkpoint that teaches this concept over one that only relies on it.
+   const step = path.steps.find(item => item.id === row.id)
+    || path.steps.find(item => (item.concepts || []).includes(row.id));
+   if (!step) continue;
+   const link = el('a', path.title + ' · ' + (path.steps.indexOf(step) + 1) + '. ' + step.title);
+   const params = new URLSearchParams({path:path.id});
+   if (identifier.test(step.id || '')) params.set('step', step.id);
+   link.href = '#paths?' + params;
    $('knowledge-paths').append(link);
   }
   if (!$('knowledge-paths').children.length) $('knowledge-paths').append(el('span', 'Explore Reading paths to choose a related subject.', 'subtle'));
-  const books = row.books.map(book => bookEntry(book, row.title)).filter(Boolean);
-  $('knowledge-books').replaceChildren(...books);
-  if (!books.length) $('knowledge-books').append(el('li', t('knowledge.noBooks', 'No PDF linked to this concept is shared right now.'), 'subtle'));
+  drawBooks(row);
   const source = sourceUrl(row.source && row.source.url);
   $('knowledge-source').hidden = !source;
   if (source) $('knowledge-source').href = source;
@@ -194,6 +207,49 @@ window.FormosaKnowledge = {init(options) {
    if (url.href !== location.href) history.replaceState(history.state, '', url);
   } catch (_) {}
  }
+ // Titles that match the query come before concepts that only mention it.
+ function rank(list, query) {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return list;
+  const score = row => {
+   const title = row.title.toLowerCase();
+   if (title === terms.join(' ')) return 0;
+   if (title.startsWith(terms[0])) return 1;
+   if (terms.every(term => title.includes(term))) return 2;
+   if (terms.every(term => (row.keywords || []).join(' ').toLowerCase().includes(term))) return 3;
+   return 4;
+  };
+  return list.map((row, index) => ({row, index, score:score(row)}))
+   .sort((a, b) => a.score - b.score || a.index - b.index).map(item => item.row);
+ }
+ // The study-status filter runs in the browser, so marking a concept keeps the open note.
+ function applyState() {
+  const state = $('knowledge-state').value, query = $('knowledge-query').value.trim();
+  rows = fetched.filter(row => !state || (state === 'reviewed' ? reviewed.has(row.id) : !reviewed.has(row.id)));
+  $('knowledge-count').textContent = t('knowledge.count', rows.length === 1 ? '{n} concept' : '{n} concepts', {n:rows.length});
+  $('knowledge-empty').hidden = rows.length > 0;
+  if (!rows.length) $('knowledge-empty-text').textContent = query
+   ? t('knowledge.emptyQuery', 'No concepts match "{query}". Try a broader term or another subject.', {query})
+   : state ? t('knowledge.emptyState', 'No concepts with this study status match the filters.')
+   : t('knowledge.emptySubject', 'No concepts in this subject yet.');
+  drawList();
+ }
+ // A background check updates only the shared PDFs, so reading position and focus stay put.
+ async function refresh() {
+  if (!rows.length || !selected) return load();
+  const current = detailRequest, id = selected;
+  try {
+   const result = await json('knowledge/concepts/' + encodeURIComponent(id));
+   if (current !== detailRequest || id !== selected) return;
+   if (!result) { clearDetail(t('knowledge.gone', 'Concept unavailable'), t('knowledge.goneText', 'This concept is no longer in the reference index.')); return; }
+   drawBooks(result.concept); showError('');
+  } catch (failure) {
+   if (current !== detailRequest || id !== selected) return;
+   // Sharing can no longer be confirmed, so the PDF links go; the note stays readable.
+   $('knowledge-books').replaceChildren(el('li', t('knowledge.booksUnconfirmed', 'Shared PDFs could not be confirmed. Try again to restore the links.'), 'subtle'));
+   showError(failure.message);
+  }
+ }
  async function load({keep = true} = {}) {
   const current = ++listRequest;
   // A new filter supersedes any in-flight selection and its old PDF links.
@@ -212,15 +268,8 @@ window.FormosaKnowledge = {init(options) {
     subjects.set(item.id, item.label);
     const option = el('option', item.label); option.value = item.id; $('knowledge-subject').append(option);
    }
-   const state = $('knowledge-state').value;
-   rows = result.concepts.filter(row => identifier.test(row.id)
-    && (!state || (state === 'reviewed' ? reviewed.has(row.id) : !reviewed.has(row.id))));
-   $('knowledge-count').textContent = t('knowledge.count', rows.length === 1 ? '{n} concept' : '{n} concepts', {n:rows.length});
-   $('knowledge-empty').hidden = rows.length > 0;
-   if (!rows.length) $('knowledge-empty-text').textContent = query
-    ? t('knowledge.emptyQuery', 'No concepts match "{query}". Try a broader term or another subject.', {query})
-    : t('knowledge.emptySubject', 'No concepts in this subject yet.');
-   drawList(); showError('');
+   fetched = rank(result.concepts.filter(row => identifier.test(row.id)), query);
+   applyState(); showError('');
    if (rows.length) {
     const next = keep && rows.some(row => row.id === selected) ? selected : rows[0].id;
     await choose(next, {from: next === selected ? null : ''});
@@ -259,20 +308,19 @@ window.FormosaKnowledge = {init(options) {
  $('knowledge-form').addEventListener('submit', event => { event.preventDefault(); clearTimeout(typing); load({keep:false}); });
  $('knowledge-query').addEventListener('input', () => { clearTimeout(typing); typing = setTimeout(() => load({keep:false}), 250); });
  $('knowledge-subject').addEventListener('change', () => load({keep:false}));
- $('knowledge-state').addEventListener('change', () => load({keep:false}));
+ $('knowledge-state').addEventListener('change', applyState);
  $('knowledge-reviewed').addEventListener('click', () => {
   if (!identifier.test(selected)) return;
   if (reviewed.has(selected)) reviewed.delete(selected); else reviewed.add(selected);
   try { localStorage.setItem('formosa-reviewed-concepts-v1', JSON.stringify([...reviewed])); }
   catch (_) { storageAvailable = false; }
-  studyProgress();
-  if ($('knowledge-state').value) load(); else drawList();
+  studyProgress(); applyState();
  });
  studyProgress();
  $('knowledge-reset').addEventListener('click', () => { $('knowledge-query').value = ''; $('knowledge-subject').value = ''; $('knowledge-state').value = ''; load({keep:false}); $('knowledge-query').focus(); });
  $('knowledge-empty-reset').addEventListener('click', () => $('knowledge-reset').click());
  $('knowledge-retry').addEventListener('click', () => load());
- document.addEventListener('visibilitychange', () => { if (visible && !document.hidden) load(); });
+ document.addEventListener('visibilitychange', () => { if (visible && !document.hidden) refresh(); });
 
  if (!options.available) {
   $('knowledge-nav').hidden = true;
@@ -291,7 +339,11 @@ window.FormosaKnowledge = {init(options) {
    return;
   }
   if (linked && identifier.test(linked)) {
-   if (linked !== selected) trail = [];
+   if (linked !== selected) {
+    // A link names one concept; earlier filters could hide it, so clear them.
+    trail = [];
+    $('knowledge-query').value = ''; $('knowledge-subject').value = ''; $('knowledge-state').value = '';
+   }
    selected = linked;
   }
   if (!started) { started = true; loadSource(); }
@@ -300,8 +352,7 @@ window.FormosaKnowledge = {init(options) {
   // Sharing can change while the desk stays open; check the current concept each minute.
   timer = setInterval(() => {
    if (document.hidden || $('knowledge-list').getAttribute('aria-busy') === 'true') return;
-   if (rows.length && selected) choose(selected, {from:null});
-   else load();
+   refresh();
   }, 60000);
  }
  return {show};

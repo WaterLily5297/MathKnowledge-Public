@@ -56,7 +56,7 @@ function route() {
  document.title = ({home:'Home',catalog:'Catalog',search:'Full-text search',shelf:'Bookshelf',paths:'Reading paths',knowledge:'Knowledge desk',about:'About'})[view] + ' - Formosa Mathematics Reading Room';
  if(view==='shelf'&&features)features.renderShelf();
  if (features) features.showSearch(view === 'search', new URLSearchParams(linked));
- if (study) study.show(view === 'paths', new URLSearchParams(linked).get('path'));
+ if (study) study.show(view === 'paths', new URLSearchParams(linked));
  if (knowledge) knowledge.show(view === 'knowledge', new URLSearchParams(linked).get('concept'));
 }
 function showCatalog() {

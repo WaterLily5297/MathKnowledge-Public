@@ -253,7 +253,16 @@ footer p { margin:.4rem 0 0; }
 .knowledge-books .subtle,.knowledge-prerequisites .subtle { border:0;padding:.4rem 0;font-size:.9rem; }
 .knowledge-footnote { margin-top:1.6rem;padding-top:.8rem;border-top:1px solid var(--line);font-size:.85rem;color:var(--muted); }
 .knowledge-footnote p { margin:0 0 .4rem; }
-.concept-study-state { display:block;margin-top:.3rem;font-size:.7rem;color:var(--gold-text); }
+.concept-study-state { display:block;margin-top:.3rem;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--teal); }
+.concept-study-state::before { content:"✓ "; }
+.knowledge-sections h2,.knowledge-sections h3,.knowledge-sections h4 { font:400 .78rem/1.4 var(--j-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:1.3rem 0 .35rem; }
+.knowledge-sections p { margin:0 0 .6rem; }
+/* Wide formulas scroll sideways; edge shadows show that more of the formula is hidden. */
+.knowledge-panel .math-block,.study-step .math-block { max-width:100%;
+ background:linear-gradient(to right,var(--surface) 30%,transparent) left/2rem 100% no-repeat local,
+  linear-gradient(to left,var(--surface) 30%,transparent) right/2rem 100% no-repeat local,
+  radial-gradient(farthest-side at 0 50%,rgb(0 0 0 / .2),transparent) left/.5rem 100% no-repeat scroll,
+  radial-gradient(farthest-side at 100% 50%,rgb(0 0 0 / .2),transparent) right/.5rem 100% no-repeat scroll; }
 .concept-list { max-height:70vh;overflow:auto; }
 .study-filters { display:flex;align-items:end;gap:1rem;flex-wrap:wrap;border-block:1px solid var(--line);padding:1rem 0;margin-top:1.4rem; }
 .study-filters label { display:flex;flex-direction:column;gap:.3rem;font-size:.85rem; }
@@ -278,13 +287,34 @@ footer p { margin:.4rem 0 0; }
 .study-readings li { margin:.5rem 0; }
 .study-readings button { margin-left:1rem;font-size:.85rem; }
 .study-route:focus-visible,.study-step:focus-visible { outline:2px solid var(--teal);outline-offset:2px; }
+.study-grid > aside { position:sticky;top:1rem; }
+#study-list { max-height:calc(100vh - 7rem); }
+.study-group > h3 { margin:1.1rem 0 .2rem;padding:0 1rem; }
+.study-group:first-child > h3 { margin-top:.6rem; }
+.study-route.is-complete .subtle::after { content:" ✓";color:var(--teal); }
+.study-meter { height:3px;background:var(--line);margin:-.4rem 0 1rem;max-width:24rem; }
+.study-meter span { display:block;height:100%;width:calc(var(--done,0) * 100%);background:var(--teal); }
+.study-outline { list-style:none;margin:.4rem 0 1.2rem;padding:0;border-top:1px solid var(--line);counter-reset:none; }
+.study-outline li { border-bottom:1px solid var(--line); }
+.study-outline-step { display:flex;align-items:baseline;gap:.75rem;width:100%;background:none;border:0;padding:.5rem .2rem;color:var(--ink);text-align:left;font-size:.95rem; }
+.study-outline-step:hover { color:var(--teal); }
+.study-outline-mark { flex:none;min-width:1.4rem;font-size:.8rem;color:var(--muted);text-align:center; }
+.study-outline-step.is-complete .study-outline-mark { color:var(--teal);font-weight:600; }
+.study-step.is-complete { border-left:3px solid var(--teal); }
+.study-done { margin-left:.7rem;font-size:.72rem;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);vertical-align:middle; }
+.study-step h4.knowledge-label { margin:1rem 0 .2rem; }
+.study-formula .math-block { margin:.6rem 0; }
+.study-example strong,.study-checkpoint strong { font-style:normal;font-weight:600; }
 @media(max-width:900px) {
  .study-grid { grid-template-columns:1fr;gap:1.5rem; }
+ .study-grid > aside { position:static; }
  #study-list { max-height:22rem; }
  .concept-list { max-height:24rem; }
  .knowledge-grid { grid-template-columns:1fr;gap:1.6rem; }
  .knowledge-panel { position:static;max-height:none;overflow:visible;padding:1.1rem 1rem; }
  .knowledge-form .result-heading { margin-left:0;width:100%; }
- .knowledge-formula { font-size:.95rem; }
+ .knowledge-formula,.study-formula { font-size:.9rem; }
  .knowledge-panel > h2 { font-size:1.5rem; }
 }
+#fulltext-submit[aria-busy="true"] { opacity:.7;cursor:progress; }
+#fulltext-results[aria-busy="true"] { min-height:4rem; }
