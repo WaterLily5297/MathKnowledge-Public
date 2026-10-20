@@ -36,6 +36,19 @@ window.FormosaKnowledge = {init(options) {
   return response.json();
  }
  function block(target, text) { rich.renderBlock(target, text, {links:false}); }
+ // The self-check's hint and solution sketch stay closed and are rendered on first opening,
+ // so the answer is not on screen (or in find-in-page) until the reader asks for it.
+ function practice(target, hint, solution) {
+  const items = [[t('knowledge.hint', 'Hint'), hint], [t('knowledge.solution', 'Solution sketch'), solution]]
+   .filter(([, text]) => typeof text === 'string' && text.trim()).map(([name, text]) => {
+    const item = el('details', undefined, 'practice-item'), body = el('div', undefined, 'rich-text practice-body');
+    let drawn = false;
+    item.append(el('summary', name), body);
+    item.addEventListener('toggle', () => { if (item.open && !drawn) { drawn = true; block(body, text); } });
+    return item;
+   });
+  target.replaceChildren(...items); target.hidden = !items.length;
+ }
  function inline(target, text) { rich.renderInline(target, text, {links:false}); }
  // Only the fixed Banana Space host is ever linked, and only over HTTPS.
  function sourceUrl(value) {
@@ -85,9 +98,9 @@ window.FormosaKnowledge = {init(options) {
   $('knowledge-detail-subject').textContent = t('knowledge.note', 'Reference note');
   $('knowledge-detail-title').textContent = title;
   $('knowledge-summary').replaceChildren(); if (note) $('knowledge-summary').append(el('p', note, 'subtle'));
-  for (const id of ['knowledge-formula', 'knowledge-prerequisites', 'knowledge-books', 'knowledge-trail'])
+  for (const id of ['knowledge-formula', 'knowledge-practice', 'knowledge-prerequisites', 'knowledge-books', 'knowledge-trail'])
    $(id).replaceChildren();
-  $('knowledge-formula').hidden = true; $('knowledge-trail').hidden = true;
+  $('knowledge-formula').hidden = true; $('knowledge-practice').hidden = true; $('knowledge-trail').hidden = true;
   $('knowledge-detail-sections').hidden = true;
   $('knowledge-reviewed').hidden = true;
  }
@@ -118,6 +131,7 @@ window.FormosaKnowledge = {init(options) {
   block($('knowledge-summary'), row.summary_md);
   $('knowledge-formula').hidden = !row.formula;
   if (row.formula) block($('knowledge-formula'), '$$\n' + row.formula + '\n$$');
+  practice($('knowledge-practice'), row.hint_md, row.solution_md);
   $('knowledge-detail-sections').hidden = false;
   $('knowledge-reviewed').hidden = false; studyProgress();
   const back = trail[trail.length - 1];

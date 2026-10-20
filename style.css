@@ -406,3 +406,13 @@ nav a { transition:color .15s ease,border-color .15s ease; }
  .appearance-panel { position:fixed;left:1rem;right:1rem;top:auto;width:auto;max-width:none;margin-top:.5rem; }
  .back-to-top { right:.9rem;bottom:.9rem; }
 }
+
+/* Self-check help (knowledge.js, study.js): closed until the reader asks for it. */
+.practice { display:grid;gap:.45rem;margin:.9rem 0 0; }
+.practice-item { border:1px solid var(--line);background:var(--surface); }
+.practice-item > summary { cursor:pointer;padding:.45rem .8rem;color:var(--teal);font-size:.92rem;list-style-position:inside; }
+.practice-item > summary:hover { color:var(--ink); }
+.practice-item[open] > summary { border-bottom:1px solid var(--line); }
+.practice-body { padding:.6rem .9rem .2rem;font-size:.97rem;overflow-x:auto; }
+.practice-body > :first-child { margin-top:0; }
+@media print { .practice-item:not([open]) { display:none; } }
