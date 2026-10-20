@@ -15,7 +15,7 @@
 <meta name="twitter:card" content="summary">
 <link rel="alternate" hreflang="en" href="https://waterlily5297.github.io/MathKnowledge-Public/">
 <title>Formosa &middot; Mathematics Reading Room</title>
-<link rel="stylesheet" href="style.css?v=52cb1da94acc">
+<link rel="stylesheet" href="style.css?v=39337497a727">
 <script src="katex.min.js?v=103a53763cc0" defer></script>
 <script src="markdown-it.min.js?v=38c70a1e7ca9" defer></script>
 <script src="rich-text.js?v=d330d853b1bc" defer></script>
@@ -24,6 +24,7 @@
 <script src="features.js?v=f04f2726a961" defer></script>
 <script src="study.js?v=7dca3f32616a" defer></script>
 <script src="knowledge.js?v=97fca339402e" defer></script>
+<script src="appearance.js?v=d079c116feaf" defer></script>
 <script src="app.js?v=a50541cd4083" defer></script>
 </head>
 <body>
@@ -33,6 +34,17 @@
  <div class="masthead-rule"></div>
  <div class="masthead-nav"><nav aria-label="Main navigation" data-i18n-attr="aria-label:nav.label"><a href="#home" data-nav="home" data-i18n="nav.home">Home</a><a href="#catalog" data-nav="catalog" data-kind="" data-i18n="nav.catalog">Catalog</a><a href="#search" data-nav="search" id="search-nav" hidden>Full-text search</a><a href="#paths" data-nav="paths" id="paths-nav" hidden>Reading paths</a><a href="#knowledge" data-nav="knowledge" id="knowledge-nav" hidden>Knowledge desk</a><a href="#shelf" data-nav="shelf">Bookshelf</a><a href="#about" data-nav="about" data-i18n="nav.about">About</a><a id="live-library" href="https://7e80ea08263fcb.lhr.life/#catalog" data-expires="2026-10-20T15:36:07.711310+00:00" target="_blank" rel="noopener noreferrer">Read PDFs ↗</a></nav>
  <div class="masthead-controls">
+  <details class="appearance" id="appearance"><summary>Appearance</summary><div class="appearance-panel">
+   <p class="appearance-heading">Background image</p>
+   <p class="appearance-note">Choose a picture from this device. It stays in this browser: it is never uploaded, published or shown to other visitors.</p>
+   <label class="secondary appearance-file">Choose image&hellip;<input id="background-file" type="file" accept="image/png,image/jpeg,image/webp"></label>
+   <div id="background-adjust" class="appearance-adjust" hidden>
+    <label class="appearance-row"><span>Strength</span><input id="background-strength" type="range" min="10" max="70" step="5"><output id="background-strength-value" for="background-strength"></output></label>
+    <label class="appearance-row"><span>Fit</span><select id="background-fit"><option value="cover">Fill the window</option><option value="contain-right">Whole image, right side</option><option value="contain-left">Whole image, left side</option></select></label>
+   </div>
+   <button id="background-remove" type="button" class="text-button" hidden>Remove background</button>
+   <p id="background-status" class="appearance-note" role="status" aria-live="polite"></p>
+  </div></details>
   <label class="theme-control"><span class="sr-only" data-i18n="theme.label">Reading theme</span><select id="theme" aria-label="Reading theme" data-i18n-attr="aria-label:theme.label"><option value="system" data-i18n="theme.system">System theme</option><option value="light" data-i18n="theme.light">Light</option><option value="dark" data-i18n="theme.dark">Dark</option><option value="night" data-i18n="theme.night">Warm night</option></select></label>
  </div></div>
 </header>
@@ -150,5 +162,6 @@
 </main>
 <dialog id="book-dialog"><button id="close-book" class="secondary">Close</button><div id="book-detail"></div></dialog>
 <footer><div class="j-foot"><span data-i18n="footer.name">Formosa Mathematics Reading Room &middot; Public reading edition</span><span aria-hidden="true">&#8718;</span></div><p><span data-i18n="footer.text">Read the original, check the edition and cite the source.</span> <a href="catalog.json" data-i18n="footer.data">Public catalog data</a></p></footer>
+<button id="back-to-top" class="back-to-top" type="button" aria-label="Back to top" hidden>&uarr;</button>
 </body>
 </html>
