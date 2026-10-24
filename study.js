@@ -15,6 +15,21 @@ window.FormosaStudy = {init(data, helpers) {
   if (Array.isArray(saved)) completed = new Set(saved.filter(key => valid.has(key)));
  } catch (_) { storageAvailable = false; }
  const label = id => id.split('-').map(word => word[0].toUpperCase() + word.slice(1)).join(' ');
+ // A step's hint and solution sketch stay closed and are rendered when first opened.
+ function practice(hint, solution) {
+  const items = [['Hint', hint], ['Solution sketch', solution]]
+   .filter(([, text]) => typeof text === 'string' && text.trim()).map(([name, text]) => {
+    const item = el('details', undefined, 'practice-item'), body = el('div', undefined, 'rich-text practice-body');
+    let drawn = false;
+    item.append(el('summary', name), body);
+    item.addEventListener('toggle', () => {
+     if (item.open && !drawn) { drawn = true; window.FormosaRichText.renderBlock(body, text, {links:false}); }
+    });
+    return item;
+   });
+  if (!items.length) return null;
+  const box = el('div', undefined, 'practice'); box.append(...items); return box;
+ }
  function progress(path) { return path.steps.filter(step => completed.has(path.id + '/' + step.id)).length; }
  function save() {
   try { localStorage.setItem('formosa-study-progress-v1', JSON.stringify([...completed])); }
@@ -82,6 +97,8 @@ window.FormosaStudy = {init(data, helpers) {
    window.FormosaRichText.renderBlock(checkpoint,
     step.checkpoint || 'Explain the main definition and solve a representative example.', {links:false});
    card.append(el('h4', 'Check your understanding', 'knowledge-label'), checkpoint);
+   const help = practice(step.hint, step.solution);
+   if (help) card.append(help);
    const concepts = el('div', undefined, 'study-links');
    for (const key of step.concepts || []) if (pattern.test(key)) concepts.append(conceptLink(key));
    card.append(concepts);

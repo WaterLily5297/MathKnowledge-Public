@@ -10,13 +10,111 @@ window.FormosaKnowledge = {init(options) {
  const identifier = /^[a-z][a-z0-9-]{0,79}$/, bookIdentifier = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,199}$/;
  const narrow = window.matchMedia ? window.matchMedia('(max-width: 900px)') : {matches:false};
  let subjects = new Map(), rows = [], selected = '', trail = [], listRequest = 0, detailRequest = 0;
- let started = false, visible = false, timer = 0, booksSnapshot = null;
+ let started = false, visible = false, timer = 0, booksSnapshot = null, exercisesSnapshot = null;
  let reviewed = new Set(), storageAvailable = true;
  try {
   const saved = JSON.parse(localStorage.getItem('formosa-reviewed-concepts-v1') || '[]');
   // Match the bounded concept capacity of the offline reference index.
   if (Array.isArray(saved)) reviewed = new Set(saved.filter(id => identifier.test(id)).slice(0, 512));
  } catch (_) { storageAvailable = false; }
+ // Spaced review, kept in this browser only: a reviewed concept comes back after 1, 3, 7,
+ // 14, 30 and 60 days while it is remembered, and after one day when it needs another look.
+ const SCHEDULE = 'formosa-review-schedule-v1', INTERVALS = [1, 3, 7, 14, 30, 60], day = /^\d{4}-\d{2}-\d{2}$/;
+ let schedule = new Map();
+ try {
+  const saved = JSON.parse(localStorage.getItem(SCHEDULE) || '{}');
+  if (saved && typeof saved === 'object' && !Array.isArray(saved))
+   for (const [id, item] of Object.entries(saved).slice(0, 512))
+    if (identifier.test(id) && item && day.test(item.due) && Number.isInteger(item.level)
+        && item.level >= 0 && item.level < INTERVALS.length)
+     schedule.set(id, {due:item.due, level:item.level, title:typeof item.title === 'string' ? item.title.slice(0, 100) : ''});
+ } catch (_) { storageAvailable = false; }
+ // Concepts reviewed before scheduling existed are due today; unreviewed ones leave the queue.
+ for (const id of reviewed) if (!schedule.has(id)) schedule.set(id, {due:dateKey(), level:0, title:''});
+ for (const id of [...schedule.keys()]) if (!reviewed.has(id)) schedule.delete(id);
+ function dateKey(offset = 0) {
+  const date = new Date(); date.setDate(date.getDate() + offset);
+  return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+ }
+ function saveSchedule() {
+  try { localStorage.setItem(SCHEDULE, JSON.stringify(Object.fromEntries(schedule))); }
+  catch (_) { storageAvailable = false; }
+ }
+ function conceptName(id, item) { return item.title || id.split('-').map(word => word[0].toUpperCase() + word.slice(1)).join(' '); }
+ function drawReview() {
+  const today = dateKey();
+  const due = [...schedule].filter(([, item]) => item.due <= today).sort((a, b) => a[1].due.localeCompare(b[1].due) || a[0].localeCompare(b[0]));
+  const upcoming = [...schedule.values()].map(item => item.due).filter(value => value > today).sort()[0];
+  $('knowledge-review').hidden = !schedule.size;
+  $('knowledge-review-status').textContent = due.length
+   ? (due.length === 1 ? '1 concept is due.' : due.length + ' concepts are due.') + ' Try each self-check before opening its help, then record how it went.'
+   : 'Nothing is due today.' + (upcoming ? ' Next review: ' + upcoming + '.' : '');
+  const items = due.slice(0, 12).map(([id, item]) => {
+   const button = el('button', undefined, 'text-button'), name = el('span'); button.type = 'button';
+   inline(name, conceptName(id, item)); button.append(name);
+   button.addEventListener('click', () => choose(id, {from:'', focus:true}));
+   const entry = el('li'); entry.append(button); return entry;
+  });
+  if (due.length > 12) items.push(el('li', 'and ' + (due.length - 12) + ' more', 'subtle'));
+  $('knowledge-review-list').replaceChildren(...items);
+ }
+ function drawRecall() {
+  const item = schedule.get(selected), due = Boolean(item) && item.due <= dateKey();
+  $('knowledge-recall').hidden = !item;
+  $('knowledge-recall-yes').hidden = !due; $('knowledge-recall-no').hidden = !due;
+  if (item) $('knowledge-recall-text').textContent = due
+   ? 'Due for review today. Try the self-check without the help, then record how it went.'
+   : 'In your review queue. Next review: ' + item.due + '.';
+ }
+ function recordRecall(remembered) {
+  const item = schedule.get(selected);
+  if (!item || item.due > dateKey()) return;
+  const level = remembered ? Math.min(item.level + 1, INTERVALS.length - 1) : 0;
+  schedule.set(selected, {...item, level, due:dateKey(INTERVALS[level])});
+  saveSchedule(); drawRecall(); drawReview();
+  $('knowledge-recall-text').textContent = (remembered ? 'Recorded as remembered.' : 'Recorded; it will come back tomorrow.')
+   + ' Next review: ' + schedule.get(selected).due + '.' + (storageAvailable ? '' : ' Browser storage is unavailable; this lasts only for this visit.');
+  // The answer buttons hide themselves, so focus moves to the result.
+  $('knowledge-recall-text').focus({preventScroll:true});
+ }
+ // Prerequisite links of every concept seen in a list or detail response, for the map.
+ const graph = new Map();
+ function remember(row) {
+  if (!identifier.test(row.id)) return;
+  graph.set(row.id, {title:row.title, prerequisites:(row.prerequisites || []).map(item => item.id).filter(id => identifier.test(id))});
+ }
+ // Everything that leads to the concept, in layers by the longest chain back to it, so
+ // each layer can be studied after the ones above it.
+ function drawMap(row) {
+  const depth = new Map(), stack = [[row.id, 0]];
+  while (stack.length) {
+   const [id, level] = stack.pop(), node = graph.get(id);
+   for (const parent of node ? node.prerequisites : [])
+    if (parent !== row.id && (depth.get(parent) || 0) < level + 1 && level < graph.size) { depth.set(parent, level + 1); stack.push([parent, level + 1]); }
+  }
+  const layers = new Map();
+  for (const [id, level] of depth) layers.set(level, [...(layers.get(level) || []), id]);
+  const done = [...depth.keys()].filter(id => reviewed.has(id)).length;
+  $('knowledge-map-heading').hidden = !depth.size; $('knowledge-map').hidden = !depth.size;
+  if (!depth.size) { $('knowledge-map').replaceChildren(); return; }
+  const summary = el('p', (depth.size === 1 ? '1 concept leads here' : depth.size + ' concepts lead here') + '; ' + done + ' reviewed in this browser.', 'subtle');
+  const list = el('ol', undefined, 'concept-map-layers');
+  for (const level of [...layers.keys()].sort((a, b) => b - a)) {
+   const item = el('li'), chips = el('div', undefined, 'concept-map-chips');
+   item.append(el('span', level === 1 ? 'Directly needed' : level + ' steps back', 'concept-map-step'));
+   for (const id of layers.get(level).sort((a, b) => graph.get(a).title.localeCompare(graph.get(b).title))) {
+    const button = el('button', undefined, reviewed.has(id) ? 'concept-chip reviewed' : 'concept-chip'), name = el('span');
+    button.type = 'button'; inline(name, graph.get(id).title); button.append(name);
+    if (reviewed.has(id)) button.append(el('span', ' ✓', 'concept-chip-mark'), el('span', ' (reviewed)', 'sr-only'));
+    button.addEventListener('click', () => choose(id, {from:row, focus:true}));
+    chips.append(button);
+   }
+   item.append(chips); list.append(item);
+  }
+  const current = el('li', undefined, 'concept-map-current'), name = el('span');
+  inline(name, row.title); current.append(el('span', 'This concept', 'concept-map-step'), name); list.append(current);
+  $('knowledge-map').replaceChildren(summary, list);
+ }
  function studyProgress() {
   $('knowledge-progress').textContent = reviewed.size + ' concepts reviewed in this browser.'
    + (storageAvailable ? '' : ' Browser storage is unavailable; changes last only for this visit.');
@@ -36,6 +134,19 @@ window.FormosaKnowledge = {init(options) {
   return response.json();
  }
  function block(target, text) { rich.renderBlock(target, text, {links:false}); }
+ // The self-check's hint and solution sketch stay closed and are rendered on first opening,
+ // so the answer is not on screen (or in find-in-page) until the reader asks for it.
+ function practice(target, hint, solution) {
+  const items = [[t('knowledge.hint', 'Hint'), hint], [t('knowledge.solution', 'Solution sketch'), solution]]
+   .filter(([, text]) => typeof text === 'string' && text.trim()).map(([name, text]) => {
+    const item = el('details', undefined, 'practice-item'), body = el('div', undefined, 'rich-text practice-body');
+    let drawn = false;
+    item.append(el('summary', name), body);
+    item.addEventListener('toggle', () => { if (item.open && !drawn) { drawn = true; block(body, text); } });
+    return item;
+   });
+  target.replaceChildren(...items); target.hidden = !items.length;
+ }
  function inline(target, text) { rich.renderInline(target, text, {links:false}); }
  // Only the fixed Banana Space host is ever linked, and only over HTTPS.
  function sourceUrl(value) {
@@ -80,16 +191,17 @@ window.FormosaKnowledge = {init(options) {
  }
  function clearDetail(title, note) {
   ++detailRequest;
-  booksSnapshot = null;
+  booksSnapshot = exercisesSnapshot = null;
   $('knowledge-detail').setAttribute('aria-busy', 'false');
   $('knowledge-detail-subject').textContent = t('knowledge.note', 'Reference note');
   $('knowledge-detail-title').textContent = title;
   $('knowledge-summary').replaceChildren(); if (note) $('knowledge-summary').append(el('p', note, 'subtle'));
-  for (const id of ['knowledge-formula', 'knowledge-prerequisites', 'knowledge-books', 'knowledge-trail'])
+  for (const id of ['knowledge-formula', 'knowledge-practice', 'knowledge-pitfall', 'knowledge-exercises-list',
+   'knowledge-prerequisites', 'knowledge-books', 'knowledge-trail'])
    $(id).replaceChildren();
-  $('knowledge-formula').hidden = true; $('knowledge-trail').hidden = true;
+  for (const id of ['knowledge-formula', 'knowledge-practice', 'knowledge-pitfall', 'knowledge-exercises', 'knowledge-trail']) $(id).hidden = true;
   $('knowledge-detail-sections').hidden = true;
-  $('knowledge-reviewed').hidden = true;
+  $('knowledge-reviewed').hidden = true; $('knowledge-recall').hidden = true;
  }
  function bookEntry(book, conceptTitle) {
   const item = el('li', undefined, 'knowledge-book');
@@ -113,13 +225,24 @@ window.FormosaKnowledge = {init(options) {
   return item;
  }
  function drawDetail(row) {
+  remember(row);
   $('knowledge-detail-subject').textContent = subjectLabel(row.subject);
   inline($('knowledge-detail-title'), row.title);
-  block($('knowledge-summary'), row.summary_md);
+  // The self-check's help sits directly under it, before the common pitfall.
+  const marker = '\n\n### Common pitfall\n', at = row.summary_md.indexOf(marker);
+  block($('knowledge-summary'), at < 0 ? row.summary_md : row.summary_md.slice(0, at));
+  practice($('knowledge-practice'), row.hint_md, row.solution_md);
+  $('knowledge-pitfall').hidden = at < 0;
+  if (at < 0) $('knowledge-pitfall').replaceChildren();
+  else block($('knowledge-pitfall'), row.summary_md.slice(at + 2));
   $('knowledge-formula').hidden = !row.formula;
   if (row.formula) block($('knowledge-formula'), '$$\n' + row.formula + '\n$$');
+  drawExercises(row);
   $('knowledge-detail-sections').hidden = false;
   $('knowledge-reviewed').hidden = false; studyProgress();
+  const queued = schedule.get(row.id);
+  if (queued && queued.title !== row.title.slice(0, 100)) { queued.title = row.title.slice(0, 100); saveSchedule(); drawReview(); }
+  drawRecall();
   const back = trail[trail.length - 1];
   $('knowledge-trail').hidden = !back;
   if (back) {
@@ -151,6 +274,7 @@ window.FormosaKnowledge = {init(options) {
    $('knowledge-paths').append(link);
   }
   if (!$('knowledge-paths').children.length) $('knowledge-paths').append(el('span', 'Explore Reading paths to choose a related subject.', 'subtle'));
+  drawMap(row);
   drawBooks(row);
   const source = sourceUrl(row.source && row.source.url);
   $('knowledge-source').hidden = !source;
@@ -164,6 +288,37 @@ window.FormosaKnowledge = {init(options) {
   $('knowledge-books').replaceChildren(...books);
   if (!books.length) $('knowledge-books').append(el('li', t('knowledge.noBooks', 'No PDF linked to this concept is shared right now.'), 'subtle'));
  }
+ function drawExercises(row) {
+  const entries = Array.isArray(row.exercises) ? row.exercises.slice(0, 3) : [];
+  const snapshot = JSON.stringify(entries);
+  if (snapshot === exercisesSnapshot) return;
+  exercisesSnapshot = snapshot;
+  const items = entries.filter(item => item && bookIdentifier.test(item.book)
+   && (item.page === null || item.page === undefined || (Number.isInteger(item.page) && item.page > 0 && item.page <= 100000))
+   && ['title', 'number', 'section_title'].every(key => typeof item[key] === 'string')).map(item => {
+   const entry = el('li'), title = el('span', undefined, 'knowledge-book-title');
+   inline(title, item.title);
+   entry.append(title, el('span', item.section_title + ' — ' + item.number, 'exercise-citation'));
+   const expected = '/read/' + item.book + (Number.isInteger(item.page) && item.page > 0 && item.page <= 100000 ? '#page=' + item.page : '');
+   const search = typeof item.search_url === 'string' && item.search_url.startsWith('#search?')
+    ? new URLSearchParams(item.search_url.slice(8)) : null;
+   const safeSearch = search && [...search.keys()].length === 2 && search.getAll('book').length === 1
+    && search.get('book') === item.book && search.getAll('query').length === 1
+    && search.get('query').length <= 120 && /^[A-Za-z]+(?:[ '-][A-Za-z]+)*$/.test(search.get('query'));
+   if (item.read_url === expected && safeSearch) {
+    const actions = el('span', undefined, 'knowledge-book-actions');
+    const read = el('a', item.page ? 'Open PDF at page ' + item.page + ' ↗' : 'Open shared PDF ↗');
+    read.href = 'read/' + encodeURIComponent(item.book) + (item.page ? '#page=' + item.page : '');
+    read.target = '_blank'; read.rel = 'noopener noreferrer';
+    const find = el('a', 'Search inside this book');
+    find.href = '#search?' + search.toString();
+    actions.append(read, find); entry.append(actions);
+   } else entry.append(el('span', 'PDF is not currently shared.', 'subtle'));
+   return entry;
+  });
+  $('knowledge-exercises-list').replaceChildren(...items);
+  $('knowledge-exercises').hidden = !items.length;
+ }
  async function refreshBooks() {
   if (!selected || $('knowledge-detail').getAttribute('aria-busy') === 'true') return;
   const id = selected, current = ++detailRequest;
@@ -172,10 +327,11 @@ window.FormosaKnowledge = {init(options) {
    if (current !== detailRequest) return;
    if (!result) { clearDetail(t('knowledge.gone', 'Concept unavailable')); return; }
    // Keep the reading panel and focused controls intact when only sharing changes.
-   drawBooks(result.concept); showError('');
+   drawBooks(result.concept); drawExercises(result.concept); showError('');
   } catch (failure) {
    if (current !== detailRequest) return;
    booksSnapshot = null; $('knowledge-books').replaceChildren();
+   exercisesSnapshot = null; $('knowledge-exercises-list').replaceChildren(); $('knowledge-exercises').hidden = true;
    showError(failure.message);
   }
  }
@@ -235,6 +391,7 @@ window.FormosaKnowledge = {init(options) {
     subjects.set(item.id, item.label);
     const option = el('option', item.label); option.value = item.id; $('knowledge-subject').append(option);
    }
+   for (const row of result.concepts) remember(row);
    const state = $('knowledge-state').value;
    rows = result.concepts.filter(row => identifier.test(row.id)
     && (!state || (state === 'reviewed' ? reviewed.has(row.id) : !reviewed.has(row.id))));
@@ -285,13 +442,20 @@ window.FormosaKnowledge = {init(options) {
  $('knowledge-state').addEventListener('change', () => load({keep:false}));
  $('knowledge-reviewed').addEventListener('click', () => {
   if (!identifier.test(selected)) return;
-  if (reviewed.has(selected)) reviewed.delete(selected); else reviewed.add(selected);
+  if (reviewed.has(selected)) { reviewed.delete(selected); schedule.delete(selected); }
+  else {
+   reviewed.add(selected);
+   const title = $('knowledge-detail-title').textContent.slice(0, 100);
+   schedule.set(selected, {due:dateKey(INTERVALS[0]), level:0, title:rows.find(row => row.id === selected)?.title.slice(0, 100) || title});
+  }
   try { localStorage.setItem('formosa-reviewed-concepts-v1', JSON.stringify([...reviewed])); }
   catch (_) { storageAvailable = false; }
-  studyProgress();
+  saveSchedule(); studyProgress(); drawReview(); drawRecall();
   if ($('knowledge-state').value) load(); else drawList();
  });
- studyProgress();
+ $('knowledge-recall-yes').addEventListener('click', () => recordRecall(true));
+ $('knowledge-recall-no').addEventListener('click', () => recordRecall(false));
+ studyProgress(); drawReview();
  $('knowledge-reset').addEventListener('click', () => { $('knowledge-query').value = ''; $('knowledge-subject').value = ''; $('knowledge-state').value = ''; load({keep:false}); $('knowledge-query').focus(); });
  $('knowledge-empty-reset').addEventListener('click', () => $('knowledge-reset').click());
  $('knowledge-to-index').addEventListener('click', () => {
@@ -319,6 +483,7 @@ window.FormosaKnowledge = {init(options) {
    $('knowledge-detail').setAttribute('aria-busy', 'false');
    return;
   }
+  drawReview();
   if (linked && identifier.test(linked)) {
    if (linked !== selected) trail = [];
    selected = linked;

@@ -406,3 +406,47 @@ nav a { transition:color .15s ease,border-color .15s ease; }
  .appearance-panel { position:fixed;left:1rem;right:1rem;top:auto;width:auto;max-width:none;margin-top:.5rem; }
  .back-to-top { right:.9rem;bottom:.9rem; }
 }
+
+/* Self-check help (knowledge.js, study.js): closed until the reader asks for it. */
+.practice { display:grid;gap:.45rem;margin:.9rem 0 0; }
+.practice-item { border:1px solid var(--line);background:var(--surface); }
+.practice-item > summary { cursor:pointer;padding:.45rem .8rem;color:var(--teal);font-size:.92rem;list-style-position:inside; }
+.practice-item > summary:hover { color:var(--ink); }
+.practice-item[open] > summary { border-bottom:1px solid var(--line); }
+.practice-body { padding:.6rem .9rem .2rem;font-size:.97rem;overflow-x:auto; }
+.practice-body > :first-child { margin-top:0; }
+@media print { .practice-item:not([open]) { display:none; } }
+
+/* Spaced review queue (knowledge.js): browser-local schedule. */
+.knowledge-review { border:1px solid var(--line);border-left:3px solid var(--teal);background:var(--surface);padding:.8rem 1rem;margin:0 0 1.2rem; }
+.knowledge-review .knowledge-label { margin:0 0 .3rem; }
+.knowledge-review p { margin:0 0 .4rem; }
+.knowledge-review-list { list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.3rem 1.1rem; }
+.knowledge-review-list:empty { display:none; }
+.knowledge-recall { margin:.9rem 0 0;padding:.6rem .8rem;border:1px dashed var(--line); }
+.knowledge-recall p { margin:0;font-size:.92rem;color:var(--muted); }
+.knowledge-recall p:focus { outline:2px solid var(--teal);outline-offset:2px; }
+.knowledge-recall-actions { display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;margin-top:.5rem; }
+.knowledge-recall-actions:has(button:not([hidden])) { display:flex; }
+.knowledge-recall-actions:not(:has(button:not([hidden]))) { display:none; }
+
+/* Concept map (knowledge.js): layers of prerequisites leading to the open concept. */
+.concept-map > p { margin:0 0 .6rem; }
+.concept-map-layers { list-style:none;margin:0;padding:0 0 0 .9rem;border-left:2px solid var(--line);display:grid;gap:.55rem; }
+.concept-map-layers > li { position:relative;display:grid;gap:.3rem; }
+.concept-map-layers > li::before { content:"";position:absolute;left:-1.25rem;top:.45rem;width:.55rem;height:.55rem;border-radius:50%;background:var(--paper);border:2px solid var(--line); }
+.concept-map-step { font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted); }
+.concept-map-chips { display:flex;flex-wrap:wrap;gap:.35rem; }
+.concept-chip { background:var(--paper);color:var(--ink);border:1px solid var(--line);padding:.2rem .55rem;font-size:.88rem;cursor:pointer;max-width:100%;text-align:left; }
+.concept-chip:hover { border-color:var(--teal);color:var(--teal); }
+.concept-chip.reviewed { border-color:var(--teal); }
+.concept-chip-mark { color:var(--teal); }
+.concept-map-current { font-weight:600; }
+.concept-map-layers > li.concept-map-current::before { background:var(--teal);border-color:var(--teal); }
+
+/* Harder exercise (knowledge.js). */
+.knowledge-exercises { margin:1.4rem 0 0;padding:.9rem 1rem;border:1px solid var(--line);border-top:3px solid var(--gold-text); }
+.knowledge-exercises h3.knowledge-label { margin:0 0 .5rem; }
+.knowledge-exercises ol { padding-left:1.4rem; }
+.knowledge-exercises li { margin:.8rem 0;overflow-wrap:anywhere; }
+.exercise-citation { display:block;margin:.25rem 0; }
