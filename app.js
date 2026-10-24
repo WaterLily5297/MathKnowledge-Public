@@ -47,13 +47,13 @@ function titleLink(row) {
 function route() {
  // The knowledge desk keeps its concept after the view: #knowledge?concept=<id>.
  const [requested, linked = ''] = location.hash.slice(1).split('?');
- const view = ['home', 'catalog', 'search', 'shelf', 'paths', 'knowledge', 'about'].includes(requested) ? requested : 'home';
+ const view = ['home', 'catalog', 'search', 'shelf', 'paths', 'knowledge', 'about', 'library'].includes(requested) ? requested : 'home';
  document.querySelectorAll('[data-view]').forEach(section => { section.hidden = section.dataset.view !== view; });
  document.querySelectorAll('[data-nav]').forEach(link => {
   if (link.dataset.nav === view) link.setAttribute('aria-current', 'page');
   else link.removeAttribute('aria-current');
  });
- document.title = ({home:'Home',catalog:'Catalog',search:'Full-text search',shelf:'Bookshelf',paths:'Reading paths',knowledge:'Knowledge desk',about:'About'})[view] + ' - Formosa Mathematics Reading Room';
+ document.title = ({home:'Home',catalog:'Catalog',search:'Full-text search',shelf:'Bookshelf',paths:'Reading paths',knowledge:'Knowledge desk',about:'About',library:'PDF library'})[view] + ' - Formosa Mathematics Reading Room';
  if(view==='shelf'&&features)features.renderShelf();
  if (features) features.showSearch(view === 'search', new URLSearchParams(linked));
  if (study) study.show(view === 'paths', new URLSearchParams(linked).get('path'));
@@ -184,6 +184,7 @@ async function start() {
   route();
   if(data.shared_pdfs){$('local-library').hidden=true;$('shared-banner').hidden=false;$('shared-status').textContent=Object.keys(data.shared_pdfs).length+' PDFs available for public reading and full-text search.';$('available-control').hidden=false;$('available-only').checked=true;$('live-library').hidden=true;}
   else if($('live-library').dataset.expires && Date.parse($('live-library').dataset.expires)<Date.now())$('live-library').hidden=true;
+  window.FormosaLibraryConnection?.init(data);
   renderMeta();
   $('filters').addEventListener('submit', event => event.preventDefault());
   for (const id of ['query','subject','type','language','available-only']) $(id).addEventListener(id === 'query' ? 'input' : 'change', () => { page = 1; render(); });
